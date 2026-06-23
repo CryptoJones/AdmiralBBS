@@ -1,0 +1,17 @@
+# Build artifacts
+/admiralbbs
+*.exe
+/dist/
+
+# Runtime secrets & state — never commit these
+ssh_host_*_key
+ssh_host_*_key.pub
+audit.jsonl
+*.jsonl
+
+# Local config / scratch
+*.local
+.DS_Store
+
+# Go
+/vendor/

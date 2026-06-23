@@ -1,0 +1,53 @@
+{
+  "project_name": "AdmiralBBS",
+  "client": "CryptoJones",
+  "tagline": "Clean-room implementation of 90's era ANSI BBSes",
+  "business_goal": "BBSes were apart of a lot of hackers childhoods and this is a fun project to pay homage to that.",
+  "tech_stack": "TBD",
+  "users": [
+    "Computer Nerds",
+    "Geeks",
+    "Old People",
+    "Nation State Actors",
+    "People with too much time on their hands."
+  ],
+  "current_process": "There is no manual process. This is a greenfield implementation.",
+  "terminology": [
+    "BBS - Bulletin Board System",
+    "Message Board - Place for people to leave messages with each other.",
+    "Door Games - Dumb Text Games that can be launched from inside the BBS",
+    "File Library - Library of objects users can download to their computers",
+    "Membership"
+  ],
+  "business_rules": [
+    "A BBS is a system used to connect people across the internet with common interests."
+  ],
+  "decisions": [
+    "The BBS must have ansi graphics when availble to the user, but must support older terminal types in black and white",
+    "The bbs must be security hardened against buffer overflows, packet ejection and sandbox escape tactics.",
+    "The BBS must have a user message board, a file library, door games, and private messaging features."
+  ],
+  "out_of_scope": [
+    "multi-tenant",
+    "web version"
+  ],
+  "risks": [
+    "mythos level AI systems that can login to the BBS and and escape into the parent OS"
+  ],
+  "fragile_inputs": "With terminal emulation there were a variety of attack surfaces that hackers exploited. We need to harden against all known and unknown attacks of this nature.",
+  "open_questions": [
+    "How long per day each user should be allowed to login (in minutes)",
+    "How to work the manual approval process for membership applications.",
+    "All the features and utilities that BBSes have offered in the past",
+    "the legal aspects of letting others inside my information systems."
+  ],
+  "sprint1_goal": "Figure out what common architectures BBSes have been written in. LOok for opensource BBS implemntations and review their tech stacks. Make Design Decisions for the product",
+  "sprint1_acceptance": [
+    "SprintPlanning.md will have a plan to implement each part of the BBS",
+    "."
+  ],
+  "sprint1_inspect": [],
+  "state_current": "Sprint 001 (Discovery & Architecture) \u2014 interview complete, planning files populated. Awaiting Architect review.",
+  "state_next": "Review planning/ files with the Architect; resolve QUESTIONS.md; produce Sprint 002 requirements.",
+  "state_blockers": []
+}
