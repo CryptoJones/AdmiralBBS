@@ -94,14 +94,47 @@ the caller's session I/O to it.
 Embedded SQLite behind a repository interface, so subsystems never touch SQL
 directly and the backend stays swappable. See `docs/DATA_MODEL.md`.
 
+## Cross-cutting: encryption & transport
+
+**In transit.** SSH (`:2222`) carries all member activity. Telnet (`:2323`) is
+deliberately crippled to a single screen — the membership application — and
+then directs the applicant to reconnect over SSH. The session layer gates on
+`Conn.Transport()`: a telnet session can reach only the apply flow; everything
+else requires SSH. No password or secret ever crosses plaintext (applicants set
+their password on first SSH login, behind a one-time approval token — SEC-2).
+
+**At rest (two layers).** The `crypto.Vault` derives a 32-byte key (Argon2id)
+from the `ADMIRALBBS_KEY` startup secret + a persisted non-secret salt, holds it
+`mlock`'d in memory, and seals payloads with XChaCha20-Poly1305:
+
+```text
+ADMIRALBBS_KEY (env/Docker secret, never on disk, never in chat)
+   │  Argon2id(secret, salt)
+   ▼
+ 32-byte key  ── mlock'd, zeroed on exit ──┐
+   │                                        │ seals
+   ▼                                        ▼
+ Layer 1 (app): message/mail bodies, file blobs, PII, audit log  → ciphertext
+ Layer 2 (vol): the whole data dir on an encrypted filesystem     → ciphertext
+```
+
+The daemon refuses to start without `ADMIRALBBS_KEY`. Handles/IDs/timestamps
+stay cleartext so the DB can index; the encrypted volume covers them offline.
+
 ## Cross-cutting: the hardening posture
 
-| Threat (from RISKS / DECISIONS) | Mitigation |
+| Threat (RISKS / DECISIONS) | Mitigation |
 |---|---|
 | Buffer overflow | Memory-safe Go; no manual buffer math |
-| Packet injection / malformed input | Bounded reader, validated escape sequences, filtered control chars at the Session boundary |
-| Sandbox escape (via doors / "AI that escapes to parent OS") | Doors run as a separate uid in a chroot/jail subprocess; the BBS daemon itself runs non-root with least privilege |
-| Plaintext credentials | SSH transport available; passwords hashed at rest (never stored plain) |
+| Packet injection / malformed input | Bounded reader, validated escape sequences, filtered control chars at the Session boundary; fuzz the telnet/SSH parsers (SEC-6 review item) |
+| Sandbox escape via doors ("AI that escapes to parent OS") — SEC-1 | Doors run as a separate uid in a jail subprocess with **scrubbed env (no master key)**, dropped caps, rlimits, timeout, no inherited fds, no network; daemon runs non-root |
+| Data at rest readable on disk | Two-layer encryption (app AEAD + encrypted volume); key only in memory |
+| Plaintext credentials in transit | SSH-only for members; Telnet limited to apply; passwords argon2id-hashed at rest (never plain) |
+| Account takeover at first login — SEC-2 | One-time out-of-band approval token (or captured SSH pubkey) to claim the password |
+| DoS / resource exhaustion — SEC-3 | Max sessions, per-IP throttle, handshake/idle/read timeouts, slow-loris deadlines |
+| Brute-force / user enumeration — SEC-4 | Login backoff + lockout, generic "login failed", constant-time lookup |
+| User→user terminal hijack — SEC-5 | Stored content escape-sanitised on **output**, not just input |
+| Audit tampering — SEC-6 | Sealed audit lines carry an HMAC hash-chain; edits/truncation detectable |
 
 ## Deployment
 

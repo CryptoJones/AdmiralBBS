@@ -1,8 +1,14 @@
 # Data Model — AdmiralBBS
 
-> Embedded SQLite. Entities below are the first-draft schema; the Builder
-> refines column types per sprint. Repository interfaces in `src/store/` wrap
-> these so subsystems never write raw SQL.
+> Embedded SQLite (pure-Go `modernc.org/sqlite`, WAL). Repository interfaces in
+> `src/store/` wrap these so subsystems never write raw SQL. Timestamps are
+> RFC3339 TEXT; integer PKs (BBS user-number culture).
+>
+> **Encryption at rest:** fields marked 🔒 are sealed with the `crypto.Vault`
+> (XChaCha20-Poly1305) before storage — they are ciphertext on disk. Structural
+> columns (ids, handles, timestamps) stay cleartext so the DB can index them;
+> the encrypted volume covers those offline. Passwords are argon2id hashes (not
+> reversible, not "encryption"). See `planning/DECISIONS.md`.
 
 ## Entities
 
@@ -13,27 +19,43 @@ The caller account. Membership status gates access (see `membership`).
 |---|---|---|
 | id | INTEGER PK | |
 | handle | TEXT UNIQUE | the BBS alias |
-| password_hash | TEXT | bcrypt/argon2 — **never** plaintext |
-| real_name | TEXT | optional |
-| email | TEXT | optional |
+| password_hash | TEXT | argon2id — **never** plaintext; empty until set on first SSH login |
+| real_name | TEXT 🔒 | optional PII, sealed at rest |
+| email | TEXT 🔒 | optional PII, sealed at rest |
 | access_level | INTEGER | SysOp / Co-SysOp / Member / Guest (see `docs/PERMISSIONS.md`) |
 | status | TEXT | `pending` \| `approved` \| `denied` \| `suspended` |
 | daily_minutes | INTEGER | per-day time budget (open question — default TBD) |
-| created_at | TIMESTAMP | |
-| last_login_at | TIMESTAMP | |
+| created_at | TEXT | |
+| last_login_at | TEXT | |
 
-### membership
-The manual-approval workflow for new applicants (open question in QUESTIONS.md).
+### user_key
+A user's registered SSH public keys (one user → many). Two-factor SSH auth
+checks an offered key against the user's ACTIVE keys; revocation is soft.
+Public keys are not secret, so they are stored cleartext (the volume covers
+them offline).
 
 | Field | Type | Notes |
 |---|---|---|
 | id | INTEGER PK | |
 | user_id | FK → user | |
-| applied_at | TIMESTAMP | |
+| public_key | TEXT | normalised authorized_keys line |
+| fingerprint | TEXT | SHA256 fingerprint (display/dedup/match) |
+| comment | TEXT | from the key line |
+| added_at | TEXT | |
+| revoked_at | TEXT | NULL = active |
+
+### membership
+The manual-approval workflow for new applicants.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | INTEGER PK | |
+| user_id | FK → user | |
+| applied_at | TEXT | |
 | reviewed_by | FK → user | the SysOp who acted |
-| reviewed_at | TIMESTAMP | |
+| reviewed_at | TEXT | |
 | decision | TEXT | `pending` \| `approved` \| `denied` |
-| note | TEXT | SysOp reason |
+| note | TEXT 🔒 | applicant reason / SysOp remark — user content, sealed at rest |
 
 ### message_area
 A message board ("base"). Many messages belong to one area.
@@ -107,21 +129,28 @@ A registered door game.
 | min_access_level | INTEGER | |
 
 ### session_log (hardening / audit)
-Append-only record of connections — supports the audit posture.
+MIRRORS the authoritative encrypted + hash-chained JSONL audit trail — **one row
+per event** (connect | activity | disconnect) — for SysOp queryability. The
+JSONL file is the source of truth; this table is a best-effort mirror.
 
 | Field | Type | Notes |
 |---|---|---|
 | id | INTEGER PK | |
-| user_id | FK → user | NULL for failed pre-auth |
+| session_id | TEXT | groups a caller's events |
+| user_id | FK → user | NULL pre-login |
+| username | TEXT | login name if known |
 | transport | TEXT | `telnet` \| `ssh` |
-| remote_addr | TEXT | |
-| connected_at | TIMESTAMP | |
-| disconnected_at | TIMESTAMP | |
-| minutes_used | INTEGER | feeds the daily budget |
+| remote_ip | TEXT | |
+| event_type | TEXT | `connect` \| `activity` \| `disconnect` |
+| action | TEXT | activity name |
+| detail | TEXT 🔒 | free-text, sealed at rest |
+| minutes | REAL | session duration on disconnect |
+| at | TEXT | event timestamp |
 
 ## Relationships (at a glance)
 
 ```text
+user 1───* user_key           (registered SSH keys; soft-revocable)
 user 1───* membership
 user 1───* message            (author)
 user 1───* private_message    (from / to)

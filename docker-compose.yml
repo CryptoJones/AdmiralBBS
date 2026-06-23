@@ -1,0 +1,16 @@
+# Run AdmiralBBS in a container:  docker compose up --build
+# State (SQLite DB, audit JSONL, SSH host key) persists in the named volume.
+services:
+  admiralbbs:
+    build: .
+    image: admiralbbs:latest
+    container_name: admiralbbs
+    restart: unless-stopped
+    ports:
+      - "2323:2323"   # telnet
+      - "2222:2222"   # ssh
+    volumes:
+      - bbs-data:/home/bbs/data
+
+volumes:
+  bbs-data:

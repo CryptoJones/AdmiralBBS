@@ -26,19 +26,28 @@ const (
 )
 
 // ServeTelnet listens on addr and hands each accepted caller (as a Conn) to
-// handle in its own goroutine. Plaintext by design — authenticity.
-func ServeTelnet(addr string, handle func(Conn)) error {
+// handle in its own goroutine, subject to the session/per-IP caps in limits.
+// Plaintext by design — authenticity (and Telnet is apply-only).
+func ServeTelnet(addr string, limits Limits, handle func(Conn)) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
+	lm := newLimiter(limits)
 	for {
 		raw, err := ln.Accept()
 		if err != nil {
 			return err
 		}
-		c := newTelnetConn(raw)
-		go handle(c)
+		ip := hostOf(raw.RemoteAddr())
+		if !lm.acquire(ip) {
+			raw.Close() // over a cap; drop quietly
+			continue
+		}
+		go func(raw net.Conn, ip string) {
+			defer lm.release(ip)
+			handle(newTelnetConn(raw))
+		}(raw, ip)
 	}
 }
 

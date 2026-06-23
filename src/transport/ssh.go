@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -14,7 +15,7 @@ import (
 // loaded from hostKeyPath, or generated and persisted there on first run.
 // Authentication is open (NoClientAuth) for Sprint 002 — the ssh username is
 // captured for the audit trail; real accounts arrive in Sprint 003.
-func ServeSSH(addr, hostKeyPath string, handle func(Conn)) error {
+func ServeSSH(addr, hostKeyPath string, limits Limits, handle func(Conn)) error {
 	signer, err := loadOrCreateHostKey(hostKeyPath)
 	if err != nil {
 		return err
@@ -26,12 +27,24 @@ func ServeSSH(addr, hostKeyPath string, handle func(Conn)) error {
 	if err != nil {
 		return err
 	}
+	lm := newLimiter(limits)
 	for {
 		raw, err := ln.Accept()
 		if err != nil {
 			return err
 		}
-		go serveSSHConn(raw, cfg, handle)
+		ip := hostOf(raw.RemoteAddr())
+		if !lm.acquire(ip) {
+			raw.Close()
+			continue
+		}
+		go func(raw net.Conn, ip string) {
+			defer lm.release(ip)
+			if limits.HandshakeTimeout > 0 {
+				raw.SetDeadline(time.Now().Add(limits.HandshakeTimeout))
+			}
+			serveSSHConn(raw, cfg, handle)
+		}(raw, ip)
 	}
 }
 
@@ -41,6 +54,7 @@ func serveSSHConn(raw net.Conn, cfg *ssh.ServerConfig, handle func(Conn)) {
 		raw.Close()
 		return
 	}
+	raw.SetDeadline(time.Time{}) // handshake done — clear the slow-loris deadline
 	go ssh.DiscardRequests(reqs)
 
 	for nc := range chans {

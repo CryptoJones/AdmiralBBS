@@ -23,11 +23,31 @@ bolt-on at the end.
 | 005 | **Private messaging** | User-to-user mail: compose, inbox, read/unread, reply. | 003 |
 | 006 | **File library** | File areas, listings, descriptions, download (Zmodem or HTTP-side-channel), upload, access gating. | 003 |
 | 007 | **Door games** | Sandboxed-subprocess launcher, dropfile generation (`door32.sys`/`DOOR.SYS`), session I/O piping, door registry. | 002, 003 |
-| 008 | **SysOp tools & hardening pass** | Admin menus (approve members, manage areas/doors, read audit log), fuzz/negative-test sweep against the full hardening matrix, non-root deployment hardening. | all |
+| 008 | **SysOp Control Panel** | SSH-only, access-level ≥80 admin console: membership queue, user management, area/door management, audit-log viewer + chain verification, live session/system status, encryption-key status. | all |
+| 009 | **Hardening pass & deploy** | Fuzz/negative-test sweep against the full hardening matrix, container hardening (read-only FS, seccomp, dropped caps), `govulncheck` in CI, key-rotation runbook. | all |
 
 Each sprint's exit gate is in `docs/VALIDATION.md`: real SyncTERM/NetRunner
 confirmation for interactive features, and a passing negative test for any
 attack surface introduced.
+
+## Security hardening map (see planning/RISKS.md, DECISIONS.md)
+
+The 100k-ft review's findings are owned by sprints, not deferred to a vague
+"hardening later":
+
+| Item | Concern | Lands in |
+|---|---|---|
+| Encryption at rest / in transit | two-layer AEAD + encrypted volume; SSH-only members, Telnet=apply | **foundation** (data layer + transport), this branch |
+| SEC-3 | DoS limits (session caps, per-IP throttle, timeouts) | **foundation** (transport/session) |
+| SEC-5 | output escape-sanitisation of stored content | **foundation** (screen) + S004 |
+| SEC-6 | audit confidentiality + HMAC hash-chain integrity | **foundation** (audit) |
+| SEC-1 | door subprocess isolation + scrubbed env | S007 |
+| SEC-2 | one-time approval token (no takeover window) | S003 |
+| SEC-4 | login backoff/lockout, generic errors, constant-time lookup | S003 |
+| SEC-7 | file-library path traversal, quotas, zip-bombs | S006 |
+| SEC-8 | server-side authz on every action; safe SysOp bootstrap | S003+ |
+| SEC-9 | minimise PII collected over Telnet | S003 |
+| SEC-10/11/12 | container hardening, govulncheck/CI, key strength + rotation | deploy / CI |
 
 ## Per-part build notes
 
@@ -69,10 +89,40 @@ attack surface introduced.
   session I/O, writes the dropfile the door expects. This *is* the
   sandbox-escape mitigation — validate with a door that tries to escape.
 
-### 008 — SysOp tools & hardening pass
-- Admin surface for everything in `docs/PERMISSIONS.md` level 80–100.
+### 008 — SysOp Control Panel
+The operator's command center — an in-BBS admin console reached from the main
+menu, **SSH-only and gated to access-level ≥80** (SysOp/Co-SysOp, per
+`docs/PERMISSIONS.md`). Server-side authz on every action (SEC-8), never just a
+hidden menu. Panels:
+
+- **Membership queue** — list pending applications (with the applicant's note),
+  approve/deny, and on approval **issue the one-time token** the applicant uses
+  to set their password on first SSH login (SEC-2). Deny with a reason.
+- **User management** — search/list users; view profile (decrypts PII on the
+  fly); set access level; suspend/reinstate; set per-user daily-minutes; clear a
+  password to force re-onboarding. Never displays password hashes.
+- **Content management** — create/edit/delete message areas and file areas;
+  register/remove door games and their sandbox config (SEC-1).
+- **Audit log viewer** — query the `session_log` mirror (by user, IP, session,
+  time window) and **verify the hash-chain** of the authoritative JSONL trail
+  (`audit.ReadAll`/chain check), surfacing any tampering (SEC-6).
+- **Live status** — active sessions/nodes, per-IP connection counts, DoS-limit
+  headroom (SEC-3), and read-only encryption status (key loaded, salt present,
+  "no plaintext at rest" confirmation).
+- **Broadcast** — optional message-of-the-day / node broadcast.
+
+Build notes: reuse the menu engine; all panels are repos + actions over the
+existing `store`. The audit viewer is the first consumer of `audit.ReadAll`.
+This sprint depends on every subsystem existing, hence near the end.
+
+### 009 — Hardening pass & deploy
 - Full fuzz/negative-test sweep against the `docs/VALIDATION.md` hardening
-  matrix; confirm non-root deployment.
+  matrix (incl. the telnet/SSH protocol parsers, not just the input sanitiser).
+- Container hardening: read-only root FS, `no-new-privileges`, dropped caps,
+  seccomp profile, Docker secrets for the key (SEC-10).
+- `govulncheck` in CI; dependency pinning; image scanning (SEC-11).
+- Key-strength guidance + a documented re-encrypt/rotation runbook (SEC-12).
+- Confirm non-root deployment end to end.
 
 ---
 

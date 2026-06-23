@@ -26,8 +26,10 @@ type Session struct {
 
 	r *bufio.Reader
 
-	mu  sync.Mutex
-	cap Capability
+	mu        sync.Mutex
+	cap       Capability
+	idle      time.Duration
+	idleTimer *time.Timer
 }
 
 // New wraps a connection in a session, detects its terminal, logs the connect
@@ -69,6 +71,22 @@ func (s *Session) trackResizes(ch <-chan transport.WindowSize) {
 		}
 		s.cap.Rows = ws.Rows
 		s.mu.Unlock()
+	}
+}
+
+// WatchIdle disconnects the caller after d of no input (SEC-3: slow-loris /
+// idle defence). A non-positive d disables the watchdog.
+func (s *Session) WatchIdle(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	s.idle = d
+	s.idleTimer = time.AfterFunc(d, func() { s.conn.Close() })
+}
+
+func (s *Session) resetIdle() {
+	if s.idleTimer != nil {
+		s.idleTimer.Reset(s.idle)
 	}
 }
 
@@ -122,6 +140,7 @@ func (s *Session) nextByte() (byte, error) {
 		if err != nil {
 			return 0, err
 		}
+		s.resetIdle() // input arrived: postpone the idle watchdog (SEC-3)
 		if b != 0x1B { // not ESC: a real byte
 			return b, nil
 		}

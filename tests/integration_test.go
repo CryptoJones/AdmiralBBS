@@ -2,9 +2,7 @@ package tests
 
 import (
 	"bytes"
-	"encoding/json"
 	"net"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -20,13 +18,13 @@ import (
 // fakeConn is an in-memory transport.Conn: it replays scripted keystrokes and
 // captures everything the BBS writes back.
 type fakeConn struct {
-	in       *bytes.Reader
-	out      bytes.Buffer
-	mu       sync.Mutex
-	term     string
-	ws       transport.WindowSize
-	user     string
-	tr       string
+	in   *bytes.Reader
+	out  bytes.Buffer
+	mu   sync.Mutex
+	term string
+	ws   transport.WindowSize
+	user string
+	tr   string
 }
 
 func newFakeConn(keys, term string, ws transport.WindowSize) *fakeConn {
@@ -43,11 +41,11 @@ func (c *fakeConn) Close() error { return nil }
 func (c *fakeConn) RemoteAddr() net.Addr {
 	return &net.TCPAddr{IP: net.IPv4(203, 0, 113, 7), Port: 5555}
 }
-func (c *fakeConn) Transport() string                     { return c.tr }
-func (c *fakeConn) TermType() string                      { return c.term }
-func (c *fakeConn) WindowSize() transport.WindowSize      { return c.ws }
+func (c *fakeConn) Transport() string                          { return c.tr }
+func (c *fakeConn) TermType() string                           { return c.term }
+func (c *fakeConn) WindowSize() transport.WindowSize           { return c.ws }
 func (c *fakeConn) WindowChanges() <-chan transport.WindowSize { return nil }
-func (c *fakeConn) Username() string                      { return c.user }
+func (c *fakeConn) Username() string                           { return c.user }
 func (c *fakeConn) output() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -66,34 +64,14 @@ func fixedClock(base time.Time) session.Clock {
 	}
 }
 
-func readEvents(t *testing.T, path string) []audit.Event {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read audit: %v", err)
-	}
-	var evs []audit.Event
-	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
-		if line == "" {
-			continue
-		}
-		var e audit.Event
-		if err := json.Unmarshal([]byte(line), &e); err != nil {
-			t.Fatalf("bad audit line %q: %v", line, err)
-		}
-		evs = append(evs, e)
-	}
-	return evs
-}
-
 func TestSpineEndToEnd_ANSI(t *testing.T) {
+	v := testVault(t)
 	auditPath := filepath.Join(t.TempDir(), "audit.jsonl")
-	logger, err := audit.New(auditPath)
+	logger, err := audit.New(auditPath, v)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Caller: open Message Boards (M), press a key, then logoff (G).
 	conn := newFakeConn("M G", "ansi", transport.WindowSize{Cols: 80, Rows: 25})
 	s := session.New("s-000001", conn, logger, fixedClock(time.Unix(1_700_000_000, 0)))
 	if err := menu.Demo("").Run(s); err != nil {
@@ -113,8 +91,11 @@ func TestSpineEndToEnd_ANSI(t *testing.T) {
 		t.Errorf("ANSI session emitted no escape codes")
 	}
 
-	// Audit trail: connect, the M activity, logoff activity, disconnect.
-	evs := readEvents(t, auditPath)
+	// The audit file is encrypted+chained; ReadAll verifies the chain & decrypts.
+	evs, err := audit.ReadAll(auditPath, v)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
 	if len(evs) < 4 {
 		t.Fatalf("expected >=4 audit events, got %d: %+v", len(evs), evs)
 	}
@@ -134,8 +115,9 @@ func TestSpineEndToEnd_ANSI(t *testing.T) {
 }
 
 func TestSpineEndToEnd_BWNoEscapes(t *testing.T) {
+	v := testVault(t)
 	auditPath := filepath.Join(t.TempDir(), "audit.jsonl")
-	logger, _ := audit.New(auditPath)
+	logger, _ := audit.New(auditPath, v)
 	conn := newFakeConn("G", "dumb", transport.WindowSize{Cols: 80})
 	s := session.New("s-1", conn, logger, fixedClock(time.Unix(1_700_000_000, 0)))
 	_ = menu.Demo("").Run(s)
