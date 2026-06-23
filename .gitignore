@@ -8,6 +8,9 @@ ssh_host_*_key
 ssh_host_*_key.pub
 audit.jsonl
 *.jsonl
+*.db
+*.db-wal
+*.db-shm
 
 # Local config / scratch
 *.local

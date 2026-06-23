@@ -1,0 +1,15 @@
+# Keep the build context lean and never ship state/secrets into the image.
+.git
+.gitignore
+admiralbbs
+*.db
+*.db-wal
+*.db-shm
+*.jsonl
+ssh_host_*_key
+ssh_host_*_key.pub
+planning/
+docs/
+references/
+samples/
+*.md

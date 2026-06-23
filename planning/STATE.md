@@ -8,7 +8,20 @@ _Last updated: 2026-06-23_
 
 ## Status
 
-Sprint 001 complete. **Sprint 002 (Core Session Engine) implemented and
+**Branch `feat/data-layer`** (not yet committed/pushed) adds, on top of the
+Sprint 002 spine: the encrypted data layer (modernc SQLite + WAL, migrations,
+repos for users/keys/memberships, argon2id), the `crypto.Vault` (Argon2id key
+from `ADMIRALBBS_KEY`, XChaCha20-Poly1305 at rest, mlock'd), dual audit
+(encrypted + HMAC hash-chained JSONL, mirrored to `session_log`), foundational
+hardening (DoS limits, idle timeout, output sanitisation), Telnet=apply-only
+with multi-SSH-key collection, two-factor-SSH data shape, and containerisation
+(Dockerfile/compose). `go build/vet/test` green; daemon refuses without the key;
+telnet apply + ssh paths smoke-tested; sensitive fields verified ciphertext at
+rest. Full 2FA enforcement + key-management UI + membership approval land in
+Sprint 003 / the SysOp Control Panel (S008).
+
+---
+_Earlier:_ Sprint 001 complete. **Sprint 002 (Core Session Engine) implemented and
 validated** (2026-06-23): Go module, Telnet (`:2323`) + SSH (`:2222`)
 listeners feeding one transport-agnostic `Session`, hardened input sanitiser,
 terminal detection (ANSI/B&W, CP437), capability-aware screen writer, data-

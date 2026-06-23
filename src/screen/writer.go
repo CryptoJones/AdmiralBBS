@@ -88,3 +88,37 @@ func (s *Writer) ColorLine(fg int, text string) {
 	s.Reset()
 	s.Print("\r\n")
 }
+
+// SafePrint writes user-generated content with escape sequences and control
+// bytes stripped, so one caller cannot inject terminal-hijacking sequences into
+// another caller's screen (RISKS SEC-5: sanitise on OUTPUT, not just input).
+func (s *Writer) SafePrint(text string) { s.Print(SanitizeForDisplay(text)) }
+
+// SanitizeForDisplay removes ANSI/VT escape sequences and C0/DEL control bytes
+// from text destined for a terminal, keeping printable ASCII, high CP437 bytes,
+// and ordinary spacing (space, tab, CR, LF).
+func SanitizeForDisplay(text string) string {
+	in := []byte(text)
+	out := make([]byte, 0, len(in))
+	for i := 0; i < len(in); i++ {
+		b := in[i]
+		switch {
+		case b == 0x1B: // ESC: drop the whole sequence
+			if i+1 < len(in) && in[i+1] == '[' {
+				i += 2
+				for i < len(in) && (in[i] < 0x40 || in[i] > 0x7E) {
+					i++
+				}
+			} else {
+				i++
+			}
+		case b == '\t' || b == '\r' || b == '\n' || b == ' ':
+			out = append(out, b)
+		case b < 0x20 || b == 0x7F:
+			// drop other control bytes
+		default:
+			out = append(out, b)
+		}
+	}
+	return string(out)
+}
