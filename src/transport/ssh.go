@@ -3,6 +3,7 @@ package transport
 import (
 	"crypto/ed25519"
 	"encoding/pem"
+	"errors"
 	"net"
 	"os"
 	"sync"
@@ -15,12 +16,27 @@ import (
 // loaded from hostKeyPath, or generated and persisted there on first run.
 // Authentication is open (NoClientAuth) for Sprint 002 — the ssh username is
 // captured for the audit trail; real accounts arrive in Sprint 003.
-func ServeSSH(addr, hostKeyPath string, limits Limits, handle func(Conn)) error {
+// Authenticator is the transport-layer first factor: it reports whether the
+// offered public key belongs to an approved user with the given handle. If nil,
+// the SSH listener accepts any connection (dev/demo only).
+type Authenticator func(username string, key ssh.PublicKey) bool
+
+func ServeSSH(addr, hostKeyPath string, limits Limits, auth Authenticator, handle func(Conn)) error {
 	signer, err := loadOrCreateHostKey(hostKeyPath)
 	if err != nil {
 		return err
 	}
-	cfg := &ssh.ServerConfig{NoClientAuth: true}
+	cfg := &ssh.ServerConfig{}
+	if auth == nil {
+		cfg.NoClientAuth = true
+	} else {
+		cfg.PublicKeyCallback = func(c ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+			if auth(c.User(), key) {
+				return &ssh.Permissions{}, nil
+			}
+			return nil, errors.New("authentication failed")
+		}
+	}
 	cfg.AddHostKey(signer)
 
 	ln, err := net.Listen("tcp", addr)

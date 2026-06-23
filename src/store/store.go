@@ -98,6 +98,9 @@ func (s *Store) Memberships() *Memberships { return &Memberships{st: s} }
 // Keys returns the SSH-key repository.
 func (s *Store) Keys() *Keys { return &Keys{st: s} }
 
+// Tokens returns the one-time approval-token repository.
+func (s *Store) Tokens() *Tokens { return &Tokens{st: s} }
+
 // SessionLog returns the audit mirror sink (implements audit.Sink).
 func (s *Store) SessionLog() *SessionLog { return &SessionLog{st: s} }
 
