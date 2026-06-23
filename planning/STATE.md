@@ -5,9 +5,9 @@ _Last updated: 2026-06-23_
 ## Active sprint
 
 **Autonomous loop: "implement all the bbs features"** (started 2026-06-23).
-Landed on `main`: S002 spine, encrypted data layer, S003 2FA auth, **S004
-message boards** (read/post/threaded replies, access gating, encrypted at rest).
-Next in loop: S005 private mail → S006 file library → S007 door games →
+Landed on `main`: S002 spine, encrypted data layer, S003 2FA auth, S004
+message boards, **S005 private mail** (inbox/unread/read/reply, party-only,
+encrypted at rest). Next in loop: S006 file library → S007 door games →
 S008 SysOp control panel.
 
 ## (earlier) Active sprint
