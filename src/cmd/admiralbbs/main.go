@@ -15,10 +15,15 @@ import (
 	"admiralbbs/src/audit"
 	"admiralbbs/src/crypto"
 	"admiralbbs/src/menu"
+	"admiralbbs/src/screen"
 	"admiralbbs/src/session"
 	"admiralbbs/src/store"
 	"admiralbbs/src/transport"
+
+	"golang.org/x/crypto/ssh"
 )
+
+const sysopLevel = 100
 
 func main() {
 	telnetAddr := flag.String("telnet", ":2323", "telnet listen address (apply-only)")
@@ -31,6 +36,7 @@ func main() {
 	maxSessions := flag.Int("max-sessions", 100, "max concurrent callers")
 	perIP := flag.Int("per-ip", 5, "max concurrent callers per IP")
 	idle := flag.Duration("idle", 10*time.Minute, "idle disconnect timeout")
+	dailyMinutes := flag.Int("daily-minutes", 60, "default per-member daily time budget (SysOps unlimited)")
 	flag.Parse()
 
 	// Hardening posture: never run privileged (DECISIONS.md).
@@ -68,7 +74,6 @@ func main() {
 	}
 	defer logger.Close()
 
-	mainMenu := menu.Demo(*artPath)
 	var counter atomic.Uint64
 	limits := transport.Limits{MaxSessions: *maxSessions, PerIP: *perIP, HandshakeTimeout: 10 * time.Second}
 
@@ -87,12 +92,27 @@ func main() {
 		_ = menu.RunApply(s, db.Users(), db.Memberships(), db.Keys())
 	}
 
-	// SSH is the members' entrance (full BBS). Login / 2FA enforcement is S003;
-	// for now it lands on the main menu.
+	// SSH first factor: the offered key must belong to an approved user with
+	// that handle (transport-layer auth). The password is the second factor,
+	// prompted by the login flow below.
+	authenticator := func(username string, key ssh.PublicKey) bool {
+		u, err := db.Users().ByHandle(username)
+		if err != nil || u.Status != store.StatusApproved {
+			return false
+		}
+		ok, _ := db.Keys().Authorizes(u.ID, key)
+		return ok
+	}
+
 	sshHandle := func(c transport.Conn) {
 		s := mkSession(c)
 		defer s.Close()
-		_ = mainMenu.Run(s)
+		u, ok := menu.RunLogin(s, db) // second factor (password / onboarding)
+		if !ok {
+			return
+		}
+		enforceBudget(s, db, u, *dailyMinutes)
+		_ = menu.Member(db, u, *artPath).Run(s)
 	}
 
 	var wg sync.WaitGroup
@@ -109,10 +129,33 @@ func main() {
 	go func() {
 		defer wg.Done()
 		log.Printf("ssh listening on %s (host key %s)", *sshAddr, *hostKey)
-		if err := transport.ServeSSH(*sshAddr, *hostKey, limits, sshHandle); err != nil {
+		if err := transport.ServeSSH(*sshAddr, *hostKey, limits, authenticator, sshHandle); err != nil {
 			log.Printf("ssh server stopped: %v", err)
 		}
 	}()
 
 	wg.Wait()
+}
+
+// enforceBudget caps a non-SysOp member's session to their remaining daily
+// minutes. SysOps are unlimited.
+func enforceBudget(s *session.Session, db *store.Store, u *store.User, defaultMinutes int) {
+	if u.AccessLevel >= sysopLevel {
+		return
+	}
+	budget := u.DailyMinutes
+	if budget <= 0 {
+		budget = defaultMinutes
+	}
+	used, _ := db.SessionLog().MinutesToday(u.Handle)
+	remaining := float64(budget) - used
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	if remaining <= 0 {
+		w.ColorLine(screen.Red, "Your daily time is used up. Come back tomorrow! NO CARRIER")
+		s.Close()
+		return
+	}
+	w.Printf("You have ~%d minutes left today.\r\n", int(remaining))
+	s.WatchBudget(time.Duration(remaining * float64(time.Minute)))
 }

@@ -1,7 +1,9 @@
 package store
 
 import (
+	"database/sql"
 	"log"
+	"time"
 
 	"admiralbbs/src/audit"
 )
@@ -40,4 +42,19 @@ func (sl *SessionLog) Count() (int, error) {
 	var n int
 	err := sl.st.db.QueryRow(`SELECT COUNT(*) FROM session_log`).Scan(&n)
 	return n, err
+}
+
+// MinutesToday sums disconnect-event durations for a user since UTC midnight —
+// the basis for the daily time budget.
+func (sl *SessionLog) MinutesToday(username string) (float64, error) {
+	midnight := time.Now().UTC().Truncate(24 * time.Hour).Format(time.RFC3339Nano)
+	var total sql.NullFloat64
+	err := sl.st.db.QueryRow(
+		`SELECT COALESCE(SUM(minutes), 0) FROM session_log
+		 WHERE username = ? AND event_type = ? AND at >= ?`,
+		username, audit.TypeDisconnect, midnight).Scan(&total)
+	if err != nil {
+		return 0, err
+	}
+	return total.Float64, nil
 }

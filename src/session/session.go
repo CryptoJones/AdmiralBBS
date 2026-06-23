@@ -26,10 +26,11 @@ type Session struct {
 
 	r *bufio.Reader
 
-	mu        sync.Mutex
-	cap       Capability
-	idle      time.Duration
-	idleTimer *time.Timer
+	mu          sync.Mutex
+	cap         Capability
+	idle        time.Duration
+	idleTimer   *time.Timer
+	budgetTimer *time.Timer
 }
 
 // New wraps a connection in a session, detects its terminal, logs the connect
@@ -100,6 +101,18 @@ func (s *Session) Cap() Capability {
 // ID returns the session identifier used in the audit trail.
 func (s *Session) ID() string { return s.id }
 
+// Username returns the login name the transport carried (SSH user; "" for telnet).
+func (s *Session) Username() string { return s.conn.Username() }
+
+// WatchBudget disconnects the caller after d regardless of activity — the daily
+// time-budget cap. A non-positive d disables it.
+func (s *Session) WatchBudget(d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	s.budgetTimer = time.AfterFunc(d, func() { s.conn.Close() })
+}
+
 // Write sends bytes to the caller (Session is an io.Writer).
 func (s *Session) Write(p []byte) (int, error) { return s.conn.Write(p) }
 
@@ -119,6 +132,12 @@ func (s *Session) Activity(action, detail string) {
 
 // Close logs the disconnect (with session duration) and closes the wire.
 func (s *Session) Close() error {
+	if s.idleTimer != nil {
+		s.idleTimer.Stop()
+	}
+	if s.budgetTimer != nil {
+		s.budgetTimer.Stop()
+	}
 	end := s.now()
 	s.log.Emit(audit.Event{
 		Time:      end,
@@ -207,6 +226,33 @@ func (s *Session) ReadLine() (string, error) {
 			if len(buf) < MaxLineLen {
 				buf = append(buf, b)
 				s.conn.Write([]byte{b}) // echo
+			}
+		}
+	}
+}
+
+// ReadPassword reads a line WITHOUT echoing it — for password entry. Bounded
+// and sanitised like ReadLine, but nothing is written back to the terminal.
+func (s *Session) ReadPassword() (string, error) {
+	buf := make([]byte, 0, 32)
+	for {
+		b, err := s.nextByte()
+		if err != nil {
+			return "", err
+		}
+		switch {
+		case b == '\r' || b == '\n':
+			io.WriteString(s.conn, "\r\n")
+			return string(buf), nil
+		case b == 0x08 || b == 0x7F:
+			if len(buf) > 0 {
+				buf = buf[:len(buf)-1]
+			}
+		case b < 0x20:
+			// drop
+		default:
+			if len(buf) < MaxLineLen {
+				buf = append(buf, b)
 			}
 		}
 	}

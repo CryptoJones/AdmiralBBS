@@ -4,6 +4,19 @@ _Last updated: 2026-06-23_
 
 ## Active sprint
 
+**003 — Users & Membership (2FA auth)** — in progress on branch `feat/sprint-003-auth`.
+
+Data layer + encryption landed on `main` (merge `55ef243`). On the S003 branch:
+one-time approval tokens (hashed, single-use, 72h TTL), `Users.Approve`, SSH
+two-factor enforcement (PublicKeyCallback gates the registered key; password is
+the 2nd factor), first-login onboarding (token → set password), login backoff +
+generic errors (SEC-4), daily time-budget enforcement, and self-service SSH-key
+management. `go build/vet/test` green; SSH 2FA smoke-tested (reject-without-key;
+onboard-with-key). Remaining S003: message-board-independent polish; full SysOp
+approval UI is S008. Earlier sprint context below.
+
+## (prior active sprint)
+
 **002 — Core Session Engine**
 
 ## Status

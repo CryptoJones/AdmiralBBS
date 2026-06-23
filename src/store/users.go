@@ -121,6 +121,11 @@ func (r *Users) SetPassword(id int64, passwordHash string) error {
 	return err
 }
 
+// Approve marks a pending user approved at the given access level.
+func (r *Users) Approve(id int64, accessLevel int) error {
+	return r.SetStatus(id, StatusApproved, accessLevel)
+}
+
 // TouchLogin records the user's most recent login time.
 func (r *Users) TouchLogin(id int64, when time.Time) error {
 	_, err := r.st.db.Exec(`UPDATE user SET last_login_at = ? WHERE id = ?`,
