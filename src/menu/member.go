@@ -13,7 +13,7 @@ func Member(st *store.Store, u *store.User, artPath string) *Menu {
 		Title:   "AdmiralBBS :: Main Menu",
 		ArtPath: artPath,
 		Items: []Item{
-			{Key: 'M', Label: "Message Boards   (coming in Sprint 004)", Action: placeholder("message-boards", "Message Boards")},
+			{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u)},
 			{Key: 'E', Label: "Private Mail     (coming in Sprint 005)", Action: placeholder("private-mail", "Private Mail")},
 			{Key: 'F', Label: "File Library     (coming in Sprint 006)", Action: placeholder("file-library", "File Library")},
 			{Key: 'D', Label: "Door Games       (coming in Sprint 007)", Action: placeholder("door-games", "Door Games")},
@@ -26,6 +26,15 @@ func Member(st *store.Store, u *store.User, artPath string) *Menu {
 func profileAction(st *store.Store, u *store.User) Action {
 	return func(s *session.Session) (Outcome, error) {
 		if err := RunProfile(s, u, st.Keys()); err != nil {
+			return Logoff, err
+		}
+		return Continue, nil
+	}
+}
+
+func boardsAction(st *store.Store, u *store.User) Action {
+	return func(s *session.Session) (Outcome, error) {
+		if err := RunBoards(s, st, u); err != nil {
 			return Logoff, err
 		}
 		return Continue, nil

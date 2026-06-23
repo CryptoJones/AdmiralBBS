@@ -4,7 +4,15 @@ _Last updated: 2026-06-23_
 
 ## Active sprint
 
-**003 — Users & Membership (2FA auth)** — in progress on branch `feat/sprint-003-auth`.
+**Autonomous loop: "implement all the bbs features"** (started 2026-06-23).
+Landed on `main`: S002 spine, encrypted data layer, S003 2FA auth, **S004
+message boards** (read/post/threaded replies, access gating, encrypted at rest).
+Next in loop: S005 private mail → S006 file library → S007 door games →
+S008 SysOp control panel.
+
+## (earlier) Active sprint
+
+**003 — Users & Membership (2FA auth)** — landed on `main`.
 
 Data layer + encryption landed on `main` (merge `55ef243`). On the S003 branch:
 one-time approval tokens (hashed, single-use, 72h TTL), `Users.Approve`, SSH

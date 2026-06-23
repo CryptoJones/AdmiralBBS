@@ -65,6 +65,9 @@ func main() {
 		log.Fatalf("open database: %v", err)
 	}
 	defer db.Close()
+	if err := db.EnsureSeedAreas(); err != nil {
+		log.Fatalf("seed message areas: %v", err)
+	}
 	log.Printf("database ready at %s (WAL, encrypted at rest)", *dbPath)
 
 	// Audit: encrypted + hash-chained JSONL is authoritative; session_log mirrors.
