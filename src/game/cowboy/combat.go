@@ -259,13 +259,33 @@ func (w *World) killMob(p *Player, m *Mob) {
 // flatline handles player death by a mob: half HP, respawn at the start, and a
 // credit/XP penalty — never permadeath.
 func (w *World) flatline(p *Player, killer *Mob) {
-	p.send(style(red, "*** FLATLINE — your deck browns out and dumps you back to the alley. ***") + crlf)
+	fee := p.Eddies / 10
+	p.send(style(red, "*** FLATLINE — "+killer.tmpl.Name+" wastes your sleeve. ***") + crlf)
+	p.send(style(neon, "Your stack restores into a fresh clone at the clinic. ") +
+		style(gold, "Clone fee: €$"+itoa(fee)) + style(neon, ".") + crlf)
 	if killer.target == p {
 		killer.target = nil
 	}
 	p.fighting = nil
 	p.pvpTarget = nil
-	w.respawnPlayer(p, p.Eddies/10)
+	w.passLeadershipOnDeath(p)
+	w.respawnPlayer(p, fee)
+}
+
+// passLeadershipOnDeath hands the crew to the longest-tenured surviving member
+// when its leader flatlines — a dead runner doesn't keep leading. Members is in
+// join order, so the longest-tenured survivor is the first member that isn't p.
+func (w *World) passLeadershipOnDeath(p *Player) {
+	if p.party == nil || p.party.Leader != p {
+		return
+	}
+	for _, m := range p.party.Members {
+		if m != p {
+			p.party.Leader = m
+			p.party.broadcast(style(dim, p.Name+" flatlined — "+m.Name+" now leads the crew.") + crlf)
+			return
+		}
+	}
 }
 
 // pvpFlatline handles losing a netrun duel: the winner siphons a cut of the
@@ -278,21 +298,21 @@ func (w *World) pvpFlatline(winner, loser *Player) {
 	winner.pvpTarget = nil
 	loser.pvpTarget = nil
 	loser.fighting = nil
+	w.passLeadershipOnDeath(loser)
 	w.respawnPlayer(loser, loot)
 }
 
-// respawnPlayer sends a defeated player back to the start at half HP, docking
-// `lostEddies` (already credited elsewhere if stolen) and a little XP.
-func (w *World) respawnPlayer(p *Player, lostEddies int) {
-	p.Eddies -= lostEddies
+// respawnPlayer re-sleeves a defeated runner: the cortical stack restores from
+// its realtime backup into a FRESH, full-HP clone at the clone facility. The
+// only cost is the clone-body fee (`fee` eddies, ~10% of credits) — no XP or
+// skill loss, since the stack is intact. (Cyberware staying with the old sleeve
+// is handled separately by the corpse system.)
+func (w *World) respawnPlayer(p *Player, fee int) {
+	p.Eddies -= fee
 	if p.Eddies < 0 {
 		p.Eddies = 0
 	}
-	p.XP -= xpToNext(p.Level) / 10
-	if p.XP < 0 {
-		p.XP = 0
-	}
-	p.HP = p.MaxHP/2 + 1
+	p.HP = p.MaxHP // fresh clone, full health
 	p.RoomID = startRoom
 	w.lookText(p)
 }

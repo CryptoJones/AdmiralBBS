@@ -23,11 +23,11 @@ func TestCowboyConnectAndLook(t *testing.T) {
 	w := cowboy.NewWorld(cowboy.NewMemStore())
 	out, buf := sink()
 	p := w.Connect("Case", out)
-	if p.RoomID != "neon_alley" || p.Level != 1 || p.HP <= 0 {
+	if p.RoomID != "capsule" || p.Level != 1 || p.HP <= 0 {
 		t.Fatalf("new character wrong: %+v", p)
 	}
 	s := buf.String()
-	for _, want := range []string{"You jack in as Case", "Neon Alley", "Exits:"} {
+	for _, want := range []string{"You jack in as Case", "Re-Sleeve Bay", "Exits:"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("connect output missing %q", want)
 		}
@@ -38,6 +38,7 @@ func TestCowboyMovement(t *testing.T) {
 	w := cowboy.NewWorld(cowboy.NewMemStore())
 	out, buf := sink()
 	p := w.Connect("Case", out)
+	w.Command(p, "out") // capsule -> neon_alley (the street)
 	w.Command(p, "east")
 	if p.RoomID != "the_sprawl" {
 		t.Fatalf("east -> %s, want the_sprawl", p.RoomID)
@@ -56,6 +57,7 @@ func TestCowboyCombatKillAndReward(t *testing.T) {
 	w.SetRoll(alwaysHit)
 	out, buf := sink()
 	p := w.Connect("Case", out)
+	w.Command(p, "out")   // capsule -> neon_alley
 	w.Command(p, "east")  // the_sprawl
 	w.Command(p, "north") // back_alley (street ganger)
 	w.Command(p, "attack ganger")
@@ -80,10 +82,12 @@ func TestCowboyMultiplayerVisibilityAndChat(t *testing.T) {
 	w := cowboy.NewWorld(cowboy.NewMemStore())
 	o1, b1 := sink()
 	p1 := w.Connect("Case", o1)
+	w.Command(p1, "out") // to the street (capsule is private)
 	o2, b2 := sink()
-	w.Connect("Molly", o2) // both start in neon_alley
+	p2 := w.Connect("Molly", o2)
+	w.Command(p2, "out") // Molly arrives in the street where Case is
 	if !strings.Contains(b1.String(), "Molly") {
-		t.Error("Case should see Molly materialize")
+		t.Error("Case should see Molly arrive in the street")
 	}
 	w.Command(p1, "say jack in, choom")
 	// (ANSI color resets sit between the speaker and the message, so check the
@@ -104,6 +108,7 @@ func TestCowboyShop(t *testing.T) {
 	w := cowboy.NewWorld(cowboy.NewMemStore())
 	out, buf := sink()
 	p := w.Connect("Case", out)
+	w.Command(p, "out")   // capsule -> neon_alley
 	w.Command(p, "south") // chrome_bar (vendor)
 	w.Command(p, "list")
 	if !strings.Contains(buf.String(), "stimpak") {
@@ -135,7 +140,8 @@ func TestCowboyNetBreachVerb(t *testing.T) {
 	w.SetRoll(alwaysHit)
 	out, buf := sink()
 	p := w.Connect("Case", out)
-	// Route into the Net: sprawl -> corpo_plaza -> data_port -> up.
+	// Route into the Net: street -> sprawl -> corpo_plaza -> data_port -> up.
+	w.Command(p, "out")
 	w.Command(p, "east")
 	w.Command(p, "east")
 	w.Command(p, "east")
@@ -255,5 +261,59 @@ func TestCowboyBannerBoxAligned(t *testing.T) {
 		if wd != widths[0] {
 			t.Fatalf("banner row %d width=%d != top-border width=%d — box misaligned", i, wd, widths[0])
 		}
+	}
+}
+
+// New runners re-sleeve in a PRIVATE bay (spawn-safe + isolated) and step OUT
+// into the street — so a respawn can't be spawn-camped.
+func TestCowboySpawnBayIsPrivate(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	o1, b1 := sink()
+	p1 := w.Connect("Case", o1)
+	o2, _ := sink()
+	p2 := w.Connect("Molly", o2)
+	if p1.RoomID != "capsule" || p2.RoomID != "capsule" {
+		t.Fatalf("new runners should spawn in the re-sleeve bay: %s/%s", p1.RoomID, p2.RoomID)
+	}
+	b1.Reset()
+	w.Command(p1, "look")
+	if strings.Contains(b1.String(), "Molly") {
+		t.Fatal("the re-sleeve bay must be private — no one else is visible in it")
+	}
+	w.Command(p1, "out")
+	if p1.RoomID != "neon_alley" {
+		t.Fatalf("OUT should lead to the street; at %s", p1.RoomID)
+	}
+}
+
+// When a crew leader flatlines, leadership passes to the longest-tenured survivor
+// (a dead runner doesn't keep leading), and the leader re-sleeves at full HP.
+func TestCowboyLeaderDeathPassesLeadership(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	w.SetRoll(alwaysHit)
+	o1, _ := sink()
+	leader := w.Connect("Case", o1) // joins first -> leader
+	o2, b2 := sink()
+	member := w.Connect("Molly", o2)
+	w.Command(leader, "group Molly") // invite
+	w.Command(member, "accept")      // consent -> Case leads [Case, Molly]
+
+	w.Command(leader, "out")
+	w.Command(leader, "east")
+	w.Command(leader, "north") // back_alley (ganger)
+	leader.HP = 1
+	w.Command(leader, "attack ganger")
+	b2.Reset()
+	for i := 0; i < 6 && leader.RoomID != "capsule"; i++ {
+		w.Tick()
+	}
+	if leader.RoomID != "capsule" {
+		t.Fatalf("leader should have flatlined and re-sleeved; at %s hp=%d", leader.RoomID, leader.HP)
+	}
+	if leader.HP != leader.MaxHP {
+		t.Fatalf("fresh clone should be full HP: %d/%d", leader.HP, leader.MaxHP)
+	}
+	if !strings.Contains(b2.String(), "now leads the crew") {
+		t.Fatalf("leadership should pass to the surviving member; got:\n%s", b2.String())
 	}
 }

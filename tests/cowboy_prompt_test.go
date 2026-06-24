@@ -31,6 +31,7 @@ func TestCowboyCombatRepromptsOnTick(t *testing.T) {
 	w.SetRoll(alwaysHit)
 	out, buf := sink()
 	p := w.Connect("Case", out)
+	w.Command(p, "out")             // re-sleeve bay -> neon_alley
 	w.Command(p, "east")            // the_sprawl
 	w.Command(p, "north")           // back_alley (a ganger)
 	w.Command(p, "attack ganger")   // engage; clears dirty at the prompt
