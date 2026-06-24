@@ -29,11 +29,14 @@ func buildRooms() map[string]*Room {
 			Desc: "A jack-in cradle wired to the city grid. Jacking in (UP) drops your\r\nconsciousness into the Net.",
 			Exits: map[string]string{"west": "corpo_plaza", "up": "the_net"}},
 		{ID: "the_net", Name: "The Net :: Grid Node",
-			Desc: "Wireframe canyons of glowing data. White ICE patrols the lattice. A\r\ncorrupted gateway descends (DOWN) into the deep net.",
-			Exits: map[string]string{"down": "deep_net", "up": "data_port"}},
+			Desc: "Wireframe canyons of glowing data. White ICE patrols the lattice. A\r\nguarded gateway descends (DOWN) toward the Sentinel Lattice.",
+			Exits: map[string]string{"down": "ice_wall", "up": "data_port"}},
+		{ID: "ice_wall", Name: "The Net :: Sentinel Lattice",
+			Desc: "A churning wall of layered ICE seals the way down. A single Gauntlet\r\nconstruct reconfigures itself endlessly — beat one shell and a harder one\r\nrises. Past it (DOWN) lies the Black ICE Fortress. This deep, runners can\r\njack each other: PvP is live here.",
+			Exits: map[string]string{"up": "the_net", "down": "deep_net"}},
 		{ID: "deep_net", Name: "Deep Net :: Black ICE Fortress",
-			Desc: "The architecture turns predatory. Black ICE coils in the dark and\r\nsomething vast and intelligent watches from the core.",
-			Exits: map[string]string{"up": "the_net"}},
+			Desc: "The architecture turns predatory. Black ICE coils in the dark and the\r\nRogue AI watches from the core. Runners fight each other here as readily\r\nas the ICE — PvP is live.",
+			Exits: map[string]string{"up": "ice_wall"}},
 	}
 	m := make(map[string]*Room, len(rooms))
 	for _, r := range rooms {
@@ -52,6 +55,11 @@ func buildMobTemplates() map[string]*MobTemplate {
 		{ID: "white_ice", Name: "a White ICE sentinel", HP: 35, Damage: 9, AC: 5, XP: 70, Eddies: 30, Aggressive: true, Home: "the_net"},
 		{ID: "black_ice", Name: "a Black ICE daemon", HP: 80, Damage: 16, AC: 8, XP: 200, Eddies: 120, Aggressive: true, Home: "deep_net"},
 		{ID: "rogue_ai", Name: "the Rogue AI", HP: 150, Damage: 22, AC: 10, XP: 500, Eddies: 400, Aggressive: true, Home: "deep_net"},
+		// Multi-stage ICE: only the white shell spawns (Home set); on "death" each
+		// stage morphs into the next, harder one. Only the final lock pays out.
+		{ID: "gauntlet1", Name: "the Gauntlet ICE [white shell]", HP: 40, Damage: 10, AC: 5, Aggressive: true, Home: "ice_wall", Next: "gauntlet2"},
+		{ID: "gauntlet2", Name: "the Gauntlet ICE [black core]", HP: 70, Damage: 16, AC: 8, Aggressive: true, Next: "gauntlet3"},
+		{ID: "gauntlet3", Name: "the Gauntlet ICE [lethal lock]", HP: 110, Damage: 24, AC: 11, XP: 700, Eddies: 600, Aggressive: true},
 	}
 	m := make(map[string]*MobTemplate, len(defs))
 	for _, t := range defs {
@@ -65,15 +73,19 @@ type ware struct {
 	name  string
 	price int
 	heal  int // stimpak: HP restored on use
-	bonus int // weapon: attack bonus granted on purchase
+	ram   int // ram-chip: RAM restored on use
+	bonus int // weapon: attack bonus granted on purchase (permanent)
+	deck  int // cyberdeck: MaxRAM bonus granted on purchase (permanent)
 	desc  string
 }
 
 // shopWares are sold at any Vendor room.
 var shopWares = []ware{
 	{name: "stimpak", price: 20, heal: 25, desc: "single-use trauma stim, restores 25 HP"},
+	{name: "ram-chip", price: 30, ram: 8, desc: "single-use RAM chip, restores 8 RAM for netruns"},
 	{name: "ice-breaker", price: 150, bonus: 5, desc: "intrusion blade, +5 attack (permanent)"},
 	{name: "mono-katana", price: 400, bonus: 12, desc: "monomolecular katana, +12 attack (permanent)"},
+	{name: "cyberdeck", price: 250, deck: 8, desc: "upgraded deck, +8 max RAM (permanent)"},
 }
 
 func findWare(name string) (ware, bool) {

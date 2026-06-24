@@ -37,10 +37,15 @@ func NewWorld(store Persistence) *World {
 		respawnTicks: defaultRespawnTicks,
 	}
 	for _, t := range w.tmpls {
-		w.spawn(t)
+		if t.Home != "" { // morph-only stages (no Home) are never spawned directly
+			w.spawn(t)
+		}
 	}
 	return w
 }
+
+// maxRAM is a player's RAM ceiling — Intelligence-derived, plus any cyberdeck.
+func maxRAM(p *Player) int { return 5 + p.Intelligence/2 + p.DeckBonus }
 
 // SetRoll overrides the RNG (tests use this to make combat deterministic).
 func (w *World) SetRoll(f func(n int) int) { w.roll = f }
@@ -124,6 +129,7 @@ func (w *World) CreateCharacter(name string, spec CharSpec, out func(string)) *P
 	}
 	p.MaxHP = maxHPFor(p)
 	p.HP = p.MaxHP
+	p.RAM = maxRAM(p)
 	w.save(p) // persist immediately so a fresh character survives a crash
 	w.enter(p)
 	return p
@@ -161,6 +167,13 @@ func (w *World) Disconnect(p *Player) {
 	if p.fighting != nil && p.fighting.target == p {
 		p.fighting.target = nil
 	}
+	p.pvpTarget = nil
+	for _, other := range w.players { // anyone duelling the leaver disengages
+		if other.pvpTarget == p {
+			other.pvpTarget = nil
+			other.send(style(dim, p.Name+" jacked out — your duel ends.") + crlf)
+		}
+	}
 	w.broadcast(p.RoomID, p, style(dim, p.Name+" flatlines from the grid.")+crlf)
 	delete(w.players, p.ID)
 	delete(w.byName, strings.ToLower(p.Name))
@@ -171,7 +184,8 @@ func (w *World) save(p *Player) {
 		Name: p.Name, Class: p.Class, Level: p.Level, XP: p.XP, Eddies: p.Eddies,
 		HP: p.HP, MaxHP: p.MaxHP, Body: p.Body, Reflexes: p.Reflexes,
 		Intelligence: p.Intelligence, WeaponBonus: p.WeaponBonus,
-		WeaponName: p.WeaponName, Room: p.RoomID, Inv: p.Inv, Quests: p.Quests,
+		WeaponName: p.WeaponName, RAM: p.RAM, DeckBonus: p.DeckBonus,
+		Room: p.RoomID, Inv: p.Inv, Quests: p.Quests,
 	})
 }
 
@@ -181,6 +195,7 @@ func newCharacter(p *Player) {
 	p.RoomID = startRoom
 	p.MaxHP = maxHPFor(p)
 	p.HP = p.MaxHP
+	p.RAM = maxRAM(p)
 	p.Inv["stimpak"] = 1
 }
 
@@ -190,6 +205,11 @@ func applySave(p *Player, sp *SavedPlayer) {
 	p.HP, p.MaxHP = sp.HP, sp.MaxHP
 	p.Body, p.Reflexes, p.Intelligence = sp.Body, sp.Reflexes, sp.Intelligence
 	p.WeaponBonus, p.WeaponName = sp.WeaponBonus, sp.WeaponName
+	p.DeckBonus = sp.DeckBonus
+	p.RAM = sp.RAM
+	if p.RAM <= 0 || p.RAM > maxRAM(p) {
+		p.RAM = maxRAM(p)
+	}
 	p.RoomID = sp.Room
 	if sp.Inv != nil {
 		p.Inv = copyIntMap(sp.Inv)

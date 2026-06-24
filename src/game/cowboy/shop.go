@@ -47,6 +47,18 @@ func (w *World) buy(p *Player, arg string) {
 		p.send(style(green, "You jack in the "+x.name+". Attack +"+itoa(x.bonus)+".") + crlf)
 		return
 	}
+	if x.deck > 0 {
+		// A cyberdeck: only upgrades your max RAM.
+		if x.deck <= p.DeckBonus {
+			p.send(style(dim, "Your current deck is already as good.") + crlf)
+			p.Eddies += x.price // refund
+			return
+		}
+		p.DeckBonus = x.deck
+		p.RAM = maxRAM(p) // fresh deck boots with full RAM
+		p.send(style(green, "You install the "+x.name+". Max RAM is now "+itoa(maxRAM(p))+".") + crlf)
+		return
+	}
 	p.Inv[x.name]++
 	p.send(style(green, "Bought "+x.name+". You have "+itoa(p.Inv[x.name])+".") + crlf)
 }
@@ -58,7 +70,7 @@ func (w *World) use(p *Player, arg string) {
 		return
 	}
 	x, ok := findWare(name)
-	if !ok || x.heal <= 0 {
+	if !ok || (x.heal <= 0 && x.ram <= 0) {
 		p.send(style(dim, "You can't use that.") + crlf)
 		return
 	}
@@ -66,9 +78,18 @@ func (w *World) use(p *Player, arg string) {
 	if p.Inv[name] == 0 {
 		delete(p.Inv, name)
 	}
-	p.HP += x.heal
-	if p.HP > p.MaxHP {
-		p.HP = p.MaxHP
+	if x.heal > 0 {
+		p.HP += x.heal
+		if p.HP > p.MaxHP {
+			p.HP = p.MaxHP
+		}
+		p.send(style(green, "You slot the "+name+" — HP now "+itoa(p.HP)+"/"+itoa(p.MaxHP)+".") + crlf)
 	}
-	p.send(style(green, "You slot the "+name+" — HP now "+itoa(p.HP)+"/"+itoa(p.MaxHP)+".") + crlf)
+	if x.ram > 0 {
+		p.RAM += x.ram
+		if p.RAM > maxRAM(p) {
+			p.RAM = maxRAM(p)
+		}
+		p.send(style(green, "You burn the "+name+" — RAM now "+itoa(p.RAM)+"/"+itoa(maxRAM(p))+".") + crlf)
+	}
 }

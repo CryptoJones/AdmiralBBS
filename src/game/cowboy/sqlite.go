@@ -30,6 +30,8 @@ func OpenSQLite(path string) (*SQLiteStore, error) {
 		intelligence  INTEGER NOT NULL,
 		weapon_bonus  INTEGER NOT NULL,
 		weapon_name   TEXT NOT NULL,
+		ram           INTEGER NOT NULL DEFAULT 0,
+		deck_bonus    INTEGER NOT NULL DEFAULT 0,
 		room          TEXT NOT NULL,
 		inv_json      TEXT NOT NULL,
 		quests_json   TEXT NOT NULL DEFAULT '{}'
@@ -48,10 +50,10 @@ func (s *SQLiteStore) Load(name string) (*SavedPlayer, bool, error) {
 	var sp SavedPlayer
 	var invJSON, questsJSON string
 	err := s.db.QueryRow(`SELECT name, class, level, xp, eddies, hp, maxhp, body, reflexes,
-		intelligence, weapon_bonus, weapon_name, room, inv_json, quests_json
+		intelligence, weapon_bonus, weapon_name, ram, deck_bonus, room, inv_json, quests_json
 		FROM cowboy_player WHERE name = ? COLLATE NOCASE`, name).
 		Scan(&sp.Name, &sp.Class, &sp.Level, &sp.XP, &sp.Eddies, &sp.HP, &sp.MaxHP, &sp.Body,
-			&sp.Reflexes, &sp.Intelligence, &sp.WeaponBonus, &sp.WeaponName, &sp.Room, &invJSON, &questsJSON)
+			&sp.Reflexes, &sp.Intelligence, &sp.WeaponBonus, &sp.WeaponName, &sp.RAM, &sp.DeckBonus, &sp.Room, &invJSON, &questsJSON)
 	if err == sql.ErrNoRows {
 		return nil, false, nil
 	}
@@ -70,15 +72,15 @@ func (s *SQLiteStore) Save(sp *SavedPlayer) error {
 	inv, _ := json.Marshal(sp.Inv)
 	qjson, _ := json.Marshal(sp.Quests)
 	_, err := s.db.Exec(`INSERT INTO cowboy_player
-		(name, class, level, xp, eddies, hp, maxhp, body, reflexes, intelligence, weapon_bonus, weapon_name, room, inv_json, quests_json)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		(name, class, level, xp, eddies, hp, maxhp, body, reflexes, intelligence, weapon_bonus, weapon_name, ram, deck_bonus, room, inv_json, quests_json)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(name) DO UPDATE SET
 		  class=excluded.class, level=excluded.level, xp=excluded.xp, eddies=excluded.eddies, hp=excluded.hp,
 		  maxhp=excluded.maxhp, body=excluded.body, reflexes=excluded.reflexes,
 		  intelligence=excluded.intelligence, weapon_bonus=excluded.weapon_bonus,
-		  weapon_name=excluded.weapon_name, room=excluded.room, inv_json=excluded.inv_json,
-		  quests_json=excluded.quests_json`,
+		  weapon_name=excluded.weapon_name, ram=excluded.ram, deck_bonus=excluded.deck_bonus,
+		  room=excluded.room, inv_json=excluded.inv_json, quests_json=excluded.quests_json`,
 		sp.Name, sp.Class, sp.Level, sp.XP, sp.Eddies, sp.HP, sp.MaxHP, sp.Body, sp.Reflexes,
-		sp.Intelligence, sp.WeaponBonus, sp.WeaponName, sp.Room, string(inv), string(qjson))
+		sp.Intelligence, sp.WeaponBonus, sp.WeaponName, sp.RAM, sp.DeckBonus, sp.Room, string(inv), string(qjson))
 	return err
 }

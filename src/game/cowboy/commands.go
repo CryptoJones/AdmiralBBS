@@ -4,7 +4,7 @@ import "strings"
 
 // netRooms are inside the Net: here your attack is a netrun BREACH driven by
 // Intelligence, not a meatspace strike driven by Body.
-var netRooms = map[string]bool{"the_net": true, "deep_net": true}
+var netRooms = map[string]bool{"the_net": true, "ice_wall": true, "deep_net": true}
 
 func (w *World) inNet(p *Player) bool { return netRooms[p.RoomID] }
 
@@ -88,10 +88,12 @@ func (w *World) sendPrompt(p *Player) {
 		hpColor = red
 	}
 	mode := "MEAT"
+	ram := ""
 	if w.inNet(p) {
 		mode = "NET"
+		ram = style(neon, " ["+itoa(p.RAM)+"/"+itoa(maxRAM(p))+"ram]")
 	}
-	p.send(style(hpColor, "["+itoa(p.HP)+"/"+itoa(p.MaxHP)+"hp]") +
+	p.send(style(hpColor, "["+itoa(p.HP)+"/"+itoa(p.MaxHP)+"hp]") + ram +
 		style(dim, " ["+mode+"] ") + style(green, "> "))
 }
 
@@ -155,13 +157,18 @@ func (w *World) score(p *Player) {
 		xpLine = "  Level " + itoa(p.Level) + " " + style(gold, "(MAX)")
 	}
 	p.send(xpLine + crlf)
-	p.send("  HP " + itoa(p.HP) + "/" + itoa(p.MaxHP) + "   AC " + itoa(playerAC(p)) + crlf)
+	p.send("  HP " + itoa(p.HP) + "/" + itoa(p.MaxHP) + "   RAM " + itoa(p.RAM) + "/" + itoa(maxRAM(p)) + "   AC " + itoa(playerAC(p)) + crlf)
 	p.send("  Body " + itoa(p.Body) + "   Reflexes " + itoa(p.Reflexes) + "   Intelligence " + itoa(p.Intelligence) + crlf)
 	weapon := "bare fists"
 	if p.WeaponName != "" {
 		weapon = p.WeaponName + " (+" + itoa(p.WeaponBonus) + " atk)"
 	}
 	p.send("  Weapon: " + weapon + crlf)
+	deck := "stock deck"
+	if p.DeckBonus > 0 {
+		deck = "cyberdeck (+" + itoa(p.DeckBonus) + " max RAM)"
+	}
+	p.send("  Deck: " + deck + crlf)
 	p.send(style(gold, "  €$ "+itoa(p.Eddies)+" eddies") + crlf)
 }
 
@@ -206,5 +213,7 @@ func helpText() string {
 		"  inventory (i)   — what you're carrying\r\n" +
 		"  quests          — fixer bounty board (at a shop); accept <#> / claim\r\n" +
 		"  quit            — jack out\r\n" +
-		style(dim, "  In the Net, ATTACK breaches ICE using Intelligence, not Body.") + crlf
+		style(dim, "  In the Net, ATTACK breaches ICE using Intelligence and spends RAM\r\n"+
+			"  (buy a cyberdeck for more, ram-chips to refill). Deep in the Net you\r\n"+
+			"  can ATTACK other runners — PvP duels. Some ICE morphs when you break it.") + crlf
 }

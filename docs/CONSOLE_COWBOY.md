@@ -47,17 +47,27 @@ one server. Console Cowboy is resident.)
   target's Armor Class, then damage = attack − soak (min 1). Mobs respawn on a
   cooldown. Death is never permanent (it's a BBS door) — you respawn in the
   alley at half HP with a small €$/XP penalty.
-- **Netrunning** — in the Net, your **ATTACK** is a breach driven by
-  **Intelligence**, not a meatspace strike driven by Body.
+- **Netrunning + RAM** — in the Net, your **ATTACK** is a breach driven by
+  **Intelligence**, not a meatspace strike driven by Body. Each breach spends
+  **RAM** (max ≈ `5 + INT/2`, raised permanently by a **cyberdeck**); out of RAM,
+  breaches sputter at half power. RAM regenerates out of combat; **ram-chips**
+  refill it. The `[NET]` prompt shows live RAM.
+- **The deep Net + multi-stage ICE** — past the Grid Node lies the **Sentinel
+  Lattice** and the **Black ICE Fortress**. The Lattice is guarded by a
+  **Gauntlet ICE** that *reconfigures* when broken: white shell → black core →
+  lethal lock, escalating each stage; only the final form pays out.
+- **PvP netrunning** — deep in the Net (Sentinel Lattice / Black ICE Fortress)
+  you can `attack <runner>` to jack another player's deck. The loser is
+  flatlined back to meatspace and the winner **siphons** a cut of their eddies.
 - **Quests** — fixers (vendor rooms) post repeatable bounties: `quests` to see
   the board, `accept <#>`, kill the target count anywhere, then `claim` back at
   a fixer for XP and eddies.
 
 ### Commands
 
-`N S E W U D` movement · `look` · `attack <foe>` · `flee` · `say <msg>` · `who` ·
-`score` · `list`/`buy <item>`/`use <item>` · `inventory` · `quests`/`accept <#>`/`claim` ·
-`help` · `quit`
+`N S E W U D` movement · `look` · `attack <foe|runner>` · `flee` · `say <msg>` ·
+`who` · `score` · `list`/`buy <item>`/`use <item>` · `inventory` ·
+`quests`/`accept <#>`/`claim` · `help` · `quit`
 
 ## Verified
 
