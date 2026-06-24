@@ -35,7 +35,7 @@ func sysopAction(st *store.Store, u *store.User, auditPath string) Action {
 
 func profileAction(st *store.Store, u *store.User) Action {
 	return func(s *session.Session) (Outcome, error) {
-		if err := RunProfile(s, u, st.Keys()); err != nil {
+		if err := RunProfile(s, st, u); err != nil {
 			return Logoff, err
 		}
 		return Continue, nil

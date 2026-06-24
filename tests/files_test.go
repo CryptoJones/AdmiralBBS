@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"admiralbbs/src/store"
@@ -51,20 +52,20 @@ func TestFileLibrary(t *testing.T) {
 		t.Fatalf("oversize: want ErrTooLarge, got %v", err)
 	}
 
-	// Path-traversal-proof: a hostile filename does NOT create a file outside
-	// the files dir; the blob is stored by row id.
+	// Path-traversal-proof: a hostile filename is metadata only; the blob is
+	// stored by row id. The invariant: every file in the blob dir is "<id>.bin"
+	// — nothing escaped, nothing used the literal name.
 	evil, err := s.Files().Add(areas[0].ID, uploader.ID, "../../../../etc/passwd", "nope", []byte("x"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	filesDir := filepath.Join(dir, "files")
-	if _, statErr := os.Stat(filepath.Join(filesDir, "../../../../etc/passwd")); statErr == nil {
-		t.Fatal("hostile filename escaped the files dir")
+	blobs, _ := os.ReadDir(filesDir)
+	for _, e := range blobs {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".bin") {
+			t.Fatalf("unexpected entry in blob dir (traversal?): %q", e.Name())
+		}
 	}
-	if _, statErr := os.Stat(filepath.Join(filesDir, "%d.bin")); statErr == nil {
-		t.Fatal("blob path used literal filename, not id")
-	}
-	// the evil entry's blob is a normal <id>.bin
 	if _, statErr := os.Stat(filepath.Join(filesDir, fmt.Sprintf("%d.bin", evil.ID))); statErr != nil {
 		t.Fatalf("id-based blob missing: %v", statErr)
 	}
