@@ -17,10 +17,12 @@ cheapest-anti-abuse-win first.
   (migration 004) so it's race-safe like the handle constraint. `ErrKeyTaken`
   surfaced in the apply flow and profile add; `Keys.ByFingerprint` resolves a
   key to its single owner. Revoking frees the fingerprint for re-use.
-- [ ] **SysOp IP banlist + transport enforcement** — SysOp can ban an IP /
-  CIDR; the Telnet and SSH listeners reject banned sources at connect time
-  (before auth). Needs a `banlist` table, a SysOp panel entry, and an
-  enforcement hook in both transports.
+- [x] **SysOp IP banlist + transport enforcement** — DONE (S015, `main`).
+  `ip_ban` table (migration 005, exact IP or CIDR, soft-lift), `store.Bans`
+  repo (Add/Lift/Active/IsBanned, fail-open on error), SysOp panel `[B]`
+  add/lift/list, and a `BanCheck` hook that drops banned sources at accept time
+  in BOTH transports before auth. End-to-end test proves the Telnet listener
+  rejects a banned source (handler never runs).
 - [ ] **User-to-user moderation** — block/ignore (a user mutes another so their
   messages/mail are hidden) + report-to-SysOp (a report lands in the SysOp
   queue for review/action).

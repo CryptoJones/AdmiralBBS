@@ -31,6 +31,7 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath stri
 		w.Line("  [U] User management")
 		w.Line("  [C] Create area / register door")
 		w.Line("  [A] Audit log viewer")
+		w.Line("  [B] IP banlist")
 		w.Line("  [Q] Back to main menu")
 		w.Color(screen.Green)
 		w.Print("\r\nChoice: ")
@@ -54,6 +55,10 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath stri
 			}
 		case 'a':
 			if err := auditViewer(s, st, auditPath); err != nil {
+				return err
+			}
+		case 'b':
+			if err := banManagement(s, st, u); err != nil {
 				return err
 			}
 		case 'q':
@@ -281,6 +286,67 @@ func auditViewer(s *session.Session, st *store.Store, auditPath string) error {
 		} else {
 			w.ColorLine(screen.Green, fmt.Sprintf("Authoritative JSONL chain verified intact: %d events.", n))
 		}
+	}
+	w.Print("\r\nPress any key...")
+	_, e := s.ReadKey()
+	return e
+}
+
+func banManagement(s *session.Session, st *store.Store, sysop *store.User) error {
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	w.Clear()
+	w.ColorLine(screen.Magenta, "IP Banlist")
+	w.ColorLine(screen.Magenta, "----------")
+	active, err := st.Bans().Active()
+	if err != nil {
+		return err
+	}
+	if len(active) == 0 {
+		w.Line("  (no active bans)")
+	}
+	for i, b := range active {
+		w.Printf("  %d) %-20s ", i+1, b.Pattern)
+		w.SafePrint(firstLine(b.Reason))
+		w.Print("\r\n")
+	}
+	w.Color(screen.Green)
+	w.Print("\r\n[A]dd ban  [L]ift ban  [Q]uit: ")
+	w.Reset()
+	k, err := s.ReadKey()
+	if err != nil {
+		return err
+	}
+	switch toLower(k) {
+	case 'a':
+		pattern := prompt(s, w, "IP or CIDR (e.g. 203.0.113.7 or 203.0.113.0/24): ")
+		if pattern == "" {
+			break
+		}
+		reason := prompt(s, w, "Reason: ")
+		if _, err := st.Bans().Add(pattern, reason, sysop.ID); err != nil {
+			w.ColorLine(screen.Red, "  [x] "+err.Error())
+		} else {
+			w.ColorLine(screen.Cyan, "  [ok] banned — new connections from there are dropped at accept")
+			s.Activity("ip-ban", pattern)
+		}
+	case 'l':
+		if len(active) == 0 {
+			break
+		}
+		in := prompt(s, w, "Number to lift (or blank to cancel): ")
+		n, perr := strconv.Atoi(strings.TrimSpace(in))
+		if perr != nil || n < 1 || n > len(active) {
+			break
+		}
+		if err := st.Bans().Lift(active[n-1].ID); err != nil {
+			w.ColorLine(screen.Red, "  [x] could not lift")
+		} else {
+			w.ColorLine(screen.Cyan, "  [ok] ban lifted")
+			s.Activity("ip-unban", active[n-1].Pattern)
+		}
+	default:
+		return nil
 	}
 	w.Print("\r\nPress any key...")
 	_, e := s.ReadKey()

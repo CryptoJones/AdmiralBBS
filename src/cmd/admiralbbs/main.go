@@ -145,6 +145,10 @@ func main() {
 		return ok
 	}
 
+	// SysOp IP banlist: both transports drop a banned source at accept time,
+	// before auth (store.Bans.IsBanned fails open on DB error / bad input).
+	banned := func(ip string) bool { return db.Bans().IsBanned(ip) }
+
 	sshHandle := func(c transport.Conn) {
 		s := mkSession(c)
 		defer s.Close()
@@ -179,7 +183,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		log.Printf("telnet (apply-only) listening on %s", *telnetAddr)
-		if err := transport.ServeTelnet(*telnetAddr, limits, telnetHandle); err != nil {
+		if err := transport.ServeTelnet(*telnetAddr, limits, banned, telnetHandle); err != nil {
 			log.Printf("telnet server stopped: %v", err)
 		}
 	}()
@@ -187,7 +191,7 @@ func main() {
 	go func() {
 		defer wg.Done()
 		log.Printf("ssh listening on %s (host key %s)", *sshAddr, *hostKey)
-		if err := transport.ServeSSH(*sshAddr, *hostKey, limits, authenticator, sshHandle); err != nil {
+		if err := transport.ServeSSH(*sshAddr, *hostKey, limits, authenticator, banned, sshHandle); err != nil {
 			log.Printf("ssh server stopped: %v", err)
 		}
 	}()
