@@ -14,9 +14,17 @@ import (
 
 // Opts tune the sandbox.
 type Opts struct {
-	Timeout time.Duration // wall-clock kill (default 15m)
-	CPULimit int          // CPU-seconds rlimit (default 120)
-	Term     string       // TERM handed to the door
+	Timeout  time.Duration // wall-clock kill (default 15m)
+	CPULimit int           // CPU-seconds rlimit (default 120)
+	Term     string        // TERM handed to the door
+
+	// Deploy-time isolation (opt-in; needs privilege). Zero values = disabled,
+	// so the default non-root run is unaffected.
+	RunAsUID  int    // drop to this uid before exec (0 = no drop)
+	RunAsGID  int    // gid to pair with RunAsUID
+	Chroot    string // chroot the door into this dir (Linux; needs /bin/sh inside)
+	NoNetwork bool   // Linux: run in a fresh empty network namespace (no net)
+	Isolate   bool   // Linux: fresh mount/pid/ipc/uts namespaces
 }
 
 // Launch runs a door game as a sandboxed subprocess wired to the caller's
@@ -67,7 +75,13 @@ func Launch(sess io.ReadWriter, command string, args []string, drop DropInfo, op
 	cmd.Stdin = sess
 	cmd.Stdout = sess
 	cmd.Stderr = io.Discard
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	spa := &syscall.SysProcAttr{Setpgid: true}
+	if opts.RunAsUID > 0 {
+		spa.Credential = &syscall.Credential{Uid: uint32(opts.RunAsUID), Gid: uint32(opts.RunAsGID)}
+	}
+	applyOSIsolation(spa, opts) // platform-specific: Linux adds chroot + namespaces
+	cmd.SysProcAttr = spa
 	// On cancel (timeout/disconnect) kill the whole process group, not just sh.
 	cmd.Cancel = func() error {
 		if cmd.Process != nil {

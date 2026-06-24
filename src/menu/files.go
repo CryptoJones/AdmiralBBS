@@ -8,6 +8,7 @@ import (
 	"admiralbbs/src/screen"
 	"admiralbbs/src/session"
 	"admiralbbs/src/store"
+	"admiralbbs/src/xfer"
 )
 
 // RunFiles drives the file library. Uploads are text/ANSI via paste (binary
@@ -112,11 +113,27 @@ func downloadFile(s *session.Session, st *store.Store, f *store.FileEntry) error
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
 	w.Clear()
-	w.ColorLine(screen.Cyan, "----- BEGIN "+f.Filename+" -----")
-	s.Write(content)
-	w.Print("\r\n")
-	w.ColorLine(screen.Cyan, "----- END "+f.Filename+" -----")
+	w.Color(screen.Green)
+	w.Print("[X]MODEM transfer or [V]iew inline? ")
+	w.Reset()
+	mode, err := s.ReadKey()
+	if err != nil {
+		return err
+	}
 	s.Activity("download-file", f.Filename)
+	if toLower(mode) == 'x' {
+		w.Line("\r\nStart your XMODEM receive now...")
+		if xerr := xfer.Send(s.Raw(), content); xerr != nil {
+			w.ColorLine(screen.Red, "\r\ntransfer failed: "+xerr.Error())
+		} else {
+			w.ColorLine(screen.Cyan, "\r\ntransfer complete.")
+		}
+	} else {
+		w.ColorLine(screen.Cyan, "----- BEGIN "+f.Filename+" -----")
+		s.Write(content)
+		w.Print("\r\n")
+		w.ColorLine(screen.Cyan, "----- END "+f.Filename+" -----")
+	}
 	w.Color(screen.Green)
 	w.Print("\r\nPress any key to continue...")
 	w.Reset()
@@ -145,22 +162,42 @@ func uploadFile(s *session.Session, st *store.Store, u *store.User, areaID int64
 	if err != nil {
 		return err
 	}
-	w.Line("Paste the file contents (text/ANSI). End with a single '.' on its own line.")
-	var lines []string
-	for {
-		line, err := s.ReadLine()
-		if err != nil {
-			return err
-		}
-		if line == "." {
-			break
-		}
-		lines = append(lines, line)
+	w.Color(screen.Green)
+	w.Print("[X]MODEM upload or [P]aste text? ")
+	w.Reset()
+	mode, err := s.ReadKey()
+	if err != nil {
+		return err
 	}
-	content := []byte(strings.Join(lines, "\n"))
+	var content []byte
+	if toLower(mode) == 'x' {
+		w.Line("\r\nStart your XMODEM send now...")
+		data, xerr := xfer.Receive(s.Raw())
+		if xerr != nil {
+			w.ColorLine(screen.Red, "\r\nupload failed: "+xerr.Error())
+			return nil
+		}
+		content = data
+	} else {
+		w.Line("\r\nPaste the file contents (text/ANSI). End with a single '.' on its own line.")
+		var lines []string
+		for {
+			line, err := s.ReadLine()
+			if err != nil {
+				return err
+			}
+			if line == "." {
+				break
+			}
+			lines = append(lines, line)
+		}
+		content = []byte(strings.Join(lines, "\n"))
+	}
 	if _, err := st.Files().Add(areaID, u.ID, strings.TrimSpace(filename), desc, content); err != nil {
 		if err == store.ErrTooLarge {
 			w.ColorLine(screen.Red, "too large — limit is 10 MiB")
+		} else if err == store.ErrQuotaExceeded {
+			w.ColorLine(screen.Red, "over your storage quota (100 MiB) — delete some files first")
 		} else {
 			w.ColorLine(screen.Red, "upload failed: "+err.Error())
 		}

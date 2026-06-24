@@ -9,8 +9,9 @@ data layer, S003 2FA auth, S004 boards, S005 mail, S006 files, S007 sandboxed
 doors, S008 SysOp control panel, S009 hardening/deploy (CI + govulncheck clean +
 hardened container + ops/key-rotation runbook). All four founding features, the
 operator console, encryption in transit + at rest, and the SEC-1…13 register are
-realised. Future polish noted in S009 (uid/container door isolation, scripts/rekey,
-upload quotas, Zmodem). Original active-sprint history below.
+realised. S010 (feature polish) then delivered all four follow-ons: per-user upload
+quotas, key rotation (cmd/rekey), door uid/namespace isolation (Linux), and
+XMODEM binary transfer. Nothing outstanding. Original active-sprint history below.
 
 ## Autonomous loop history
 

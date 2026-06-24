@@ -12,8 +12,9 @@ import (
 )
 
 // RunDoors lists the door games a member may play and launches the chosen one
-// as a sandboxed subprocess wired to the session.
-func RunDoors(s *session.Session, st *store.Store, u *store.User) error {
+// as a sandboxed subprocess wired to the session. base carries the deploy-time
+// isolation options (uid/chroot/namespaces); per-launch Timeout/Term are added.
+func RunDoors(s *session.Session, st *store.Store, u *store.User, base doors.Opts) error {
 	for {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
@@ -50,13 +51,13 @@ func RunDoors(s *session.Session, st *store.Store, u *store.User) error {
 		if perr != nil || n < 1 || n > len(list) {
 			continue
 		}
-		if err := playDoor(s, u, list[n-1]); err != nil {
+		if err := playDoor(s, u, list[n-1], base); err != nil {
 			return err
 		}
 	}
 }
 
-func playDoor(s *session.Session, u *store.User, d *store.Door) error {
+func playDoor(s *session.Session, u *store.User, d *store.Door, base doors.Opts) error {
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
 	w.Clear()
@@ -75,7 +76,10 @@ func playDoor(s *session.Session, u *store.User, d *store.Door) error {
 		Node:        1,
 		ANSI:        cap.ANSI,
 	}
-	err := doors.Launch(s.Raw(), d.Command, nil, drop, doors.Opts{Timeout: 15 * time.Minute, Term: termOf(cap.ANSI)})
+	opts := base
+	opts.Timeout = 15 * time.Minute
+	opts.Term = termOf(cap.ANSI)
+	err := doors.Launch(s.Raw(), d.Command, nil, drop, opts)
 
 	w.Color(screen.Cyan)
 	w.Print("\r\n\r\n")

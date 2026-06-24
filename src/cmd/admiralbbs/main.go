@@ -14,6 +14,7 @@ import (
 
 	"admiralbbs/src/audit"
 	"admiralbbs/src/crypto"
+	"admiralbbs/src/doors"
 	"admiralbbs/src/menu"
 	"admiralbbs/src/screen"
 	"admiralbbs/src/session"
@@ -37,6 +38,11 @@ func main() {
 	perIP := flag.Int("per-ip", 5, "max concurrent callers per IP")
 	idle := flag.Duration("idle", 10*time.Minute, "idle disconnect timeout")
 	dailyMinutes := flag.Int("daily-minutes", 60, "default per-member daily time budget (SysOps unlimited)")
+	doorUID := flag.Int("door-uid", 0, "run door games as this uid (0=off; needs root)")
+	doorGID := flag.Int("door-gid", 0, "gid paired with -door-uid")
+	doorChroot := flag.String("door-chroot", "", "chroot door games into this dir (Linux; needs /bin/sh inside)")
+	doorNoNet := flag.Bool("door-no-network", false, "run door games with no network (Linux; needs root)")
+	doorIsolate := flag.Bool("door-isolate", false, "run door games in fresh namespaces (Linux; needs root)")
 	flag.Parse()
 
 	// Hardening posture: never run privileged (DECISIONS.md).
@@ -121,7 +127,8 @@ func main() {
 			return
 		}
 		enforceBudget(s, db, u, *dailyMinutes)
-		_ = menu.Member(db, u, *artPath, *auditPath).Run(s)
+		doorOpts := doors.Opts{RunAsUID: *doorUID, RunAsGID: *doorGID, Chroot: *doorChroot, NoNetwork: *doorNoNet, Isolate: *doorIsolate}
+		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts).Run(s)
 	}
 
 	var wg sync.WaitGroup
