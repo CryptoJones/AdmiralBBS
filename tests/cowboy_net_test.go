@@ -154,21 +154,45 @@ func TestCowboyPvPDuel(t *testing.T) {
 	}
 }
 
-func TestCowboyNoPvPInMeatspace(t *testing.T) {
+// In the safe zone (the street outside the clone pods), drawing on another
+// runner gets the AGGRESSOR flatlined by a security drone; the target is untouched.
+func TestCowboySafeZoneSecurityKill(t *testing.T) {
 	w := cowboy.NewWorld(cowboy.NewMemStore())
 	o1, _ := sink()
 	p1 := w.Connect("Case", o1)
 	w.Command(p1, "out")
 	o2, _ := sink()
 	p2 := w.Connect("Molly", o2)
-	w.Command(p2, "out") // both now in neon_alley (meatspace)
+	w.Command(p2, "out") // both in neon_alley (no-violence zone)
 
+	hp2 := p2.HP
 	w.Command(p1, "attack molly")
-	if p1.RoomID != "neon_alley" {
-		t.Fatal("attacking a player name in meatspace should not move/duel")
+	if p1.RoomID != "capsule" {
+		t.Fatalf("aggressor should be security-killed and re-sleeved; at %s", p1.RoomID)
 	}
-	// No duel should have started (PvP is Net-only). Tick to be sure nothing breaks.
-	w.Tick()
+	if p2.HP != hp2 {
+		t.Fatalf("the target should be unharmed: %d -> %d", hp2, p2.HP)
+	}
+}
+
+// PvP is live in the REST of meatspace: attacking a runner starts a duel.
+func TestCowboyPvPInMeatspace(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	o1, b1 := sink()
+	p1 := w.Connect("Case", o1)
+	o2, _ := sink()
+	p2 := w.Connect("Molly", o2)
+	for _, p := range []*cowboy.Player{p1, p2} {
+		w.Command(p, "out")
+		w.Command(p, "east") // the_sprawl (not a safe zone)
+	}
+	if p1.RoomID != "the_sprawl" || p2.RoomID != "the_sprawl" {
+		t.Fatalf("both should be in the_sprawl: %s/%s", p1.RoomID, p2.RoomID)
+	}
+	w.Command(p1, "attack molly")
+	if !strings.Contains(b1.String(), "duel") {
+		t.Fatalf("attacking a runner in open meatspace should start a duel; got:\n%s", b1.String())
+	}
 }
 
 func TestCowboyDeckPersistsRAM(t *testing.T) {

@@ -363,6 +363,8 @@ func helpText() string {
 		"  leaderboard     — top runners by level\r\n" +
 		"  quit            — jack out\r\n" +
 		style(dim, "  In the Net, ATTACK breaches ICE using Intelligence and spends RAM\r\n"+
-			"  (buy a cyberdeck for more, ram-chips to refill). Deep in the Net you\r\n"+
-			"  can ATTACK other runners — PvP duels. Some ICE morphs when you break it.") + crlf
+			"  (buy a cyberdeck for more, ram-chips to refill). PvP is LIVE EVERYWHERE\r\n"+
+			"  except the street outside the clone pods — draw on a runner there and a\r\n"+
+			"  security drone flatlines you. Die and your sleeve drops with your gear;\r\n"+
+			"  LOOT it, re-INSTALL cyberware at a ripperdoc. Some ICE morphs when broken.") + crlf
 }

@@ -7,10 +7,18 @@ import "strings"
 func (w *World) engage(p *Player, arg string) {
 	arg = strings.ToLower(strings.TrimSpace(arg))
 
-	// In the Net, you can jack another runner: PvP.
-	if w.inNet(p) && arg != "" {
+	// Targeting another runner? PvP is live everywhere EXCEPT the safe zone
+	// outside the clone pods — draw there and a security drone flatlines you.
+	if arg != "" {
 		if target := w.playerInRoomByName(p.RoomID, arg, p); target != nil {
-			w.engagePvP(p, target)
+			if w.pvpAllowed(p) {
+				w.engagePvP(p, target)
+			} else {
+				p.send(style(red, "You move on "+target.Name+" — but this is a no-violence zone.") + crlf)
+				w.broadcast(p.RoomID, p, style(hot, "A security drone locks onto "+p.Name+" for assault and opens fire!")+crlf)
+				target.send(style(dim, "A security drone drops "+p.Name+" before they reach you.") + crlf)
+				w.securityKill(p)
+			}
 			return
 		}
 	}
@@ -207,7 +215,7 @@ func (w *World) resolvePvP() {
 		if d == nil {
 			continue
 		}
-		if !w.inNet(p) || d.RoomID != p.RoomID || w.players[d.ID] == nil {
+		if !w.pvpAllowed(p) || d.RoomID != p.RoomID || w.players[d.ID] == nil {
 			p.pvpTarget = nil
 			p.send(style(dim, "Your duel target is gone.") + crlf)
 			continue
@@ -266,6 +274,31 @@ func (w *World) flatline(p *Player, killer *Mob) {
 	if killer.target == p {
 		killer.target = nil
 	}
+	w.reSleeve(p, fee)
+}
+
+// pvpAllowed reports whether one runner may attack another in this room. PvP is
+// live everywhere except no-violence safe zones (the street outside the pods)
+// and private capsule bays.
+func (w *World) pvpAllowed(p *Player) bool {
+	r := w.room(p.RoomID)
+	return r != nil && !r.Safe && !r.Private
+}
+
+// securityKill is the safe-zone enforcer: a runner who draws on another in a
+// no-violence zone is flatlined on the spot by an NCPD drone (drops their sleeve
+// and pays the clone fee, like any death).
+func (w *World) securityKill(p *Player) {
+	fee := p.Eddies / 10
+	p.send(style(red, "*** An NCPD security drone flatlines you for assault in a no-violence zone. ***") + crlf)
+	p.send(style(neon, "Your stack restores into a fresh clone. ") +
+		style(gold, "Clone fee: €$"+itoa(fee)) + style(neon, ".") + crlf)
+	w.reSleeve(p, fee)
+}
+
+// reSleeve runs the shared death sequence: clear combat, drop the old sleeve as
+// a corpse, hand off crew leadership, and respawn the fresh clone (charging fee).
+func (w *World) reSleeve(p *Player, fee int) {
 	p.fighting = nil
 	p.pvpTarget = nil
 	w.dropCorpse(p)
@@ -325,11 +358,7 @@ func (w *World) pvpFlatline(winner, loser *Player) {
 	winner.send(style(gold, "*** You fry "+loser.Name+"'s deck and siphon €$"+itoa(loot)+"! ***") + crlf)
 	winner.Eddies += loot
 	winner.pvpTarget = nil
-	loser.pvpTarget = nil
-	loser.fighting = nil
-	w.dropCorpse(loser)
-	w.passLeadershipOnDeath(loser)
-	w.respawnPlayer(loser, loot)
+	w.reSleeve(loser, loot)
 }
 
 // respawnPlayer re-sleeves a defeated runner: the cortical stack restores from

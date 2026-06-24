@@ -9,11 +9,11 @@ const startRoom = "capsule"
 // and the Net beyond the jack-in port.
 func buildRooms() map[string]*Room {
 	rooms := []*Room{
-		{ID: "capsule", Name: "Re-Sleeve Bay :: Your Booth", Private: true,
+		{ID: "capsule", Name: "Re-Sleeve Bay :: Your Booth", Private: true, Safe: true,
 			Desc: "A private booth in the clone clinic. You come to in a fresh sleeve, your\r\ncortical stack restored from its realtime backup — calm, whole, and broke a\r\nfew eddies lighter for the body. The clinic doors slide OUT into the street.",
 			Exits: map[string]string{"out": "neon_alley"}},
-		{ID: "neon_alley", Name: "Neon Alley",
-			Desc: "Rain hisses on hot neon. Holo-ads for synth-ramen and combat clinics\r\nflicker across puddles. The Sprawl roars to the east; a battered door to\r\nthe south leads into the Chrome Rose; the re-sleeve clinic is just IN off the street.",
+		{ID: "neon_alley", Name: "Neon Alley", Safe: true,
+			Desc: "Rain hisses on hot neon. Holo-ads for synth-ramen and combat clinics\r\nflicker across puddles. The Sprawl roars to the east; a battered door to\r\nthe south leads into the Chrome Rose; the re-sleeve clinic is just IN off\r\nthe street. NCPD drones hum overhead — draw on another runner here and they\r\nflatline you on the spot. (no-violence zone)",
 			Exits: map[string]string{"east": "the_sprawl", "south": "chrome_bar", "in": "capsule"}},
 		{ID: "chrome_bar", Name: "The Chrome Rose", Vendor: true,
 			Desc: "A netrunner dive. Chrome-plated regulars jack into the bar's local node\r\nwhile a rigger bartender slings stims and gear. A vendor terminal glows\r\nhere (type LIST).",
