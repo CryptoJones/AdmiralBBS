@@ -56,6 +56,7 @@ func RunBoards(s *session.Session, st *store.Store, u *store.User) error {
 
 func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.MessageArea, handles *handleCache) error {
 	newestFirst := false
+	page := 0
 	var listed []*store.Message // non-nil => an active search/filter result
 	var listedHeader string
 	for {
@@ -72,6 +73,8 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 			}
 		}
 		msgs = hideBlocked(st, u.ID, msgs)
+		lo, hi, pages := pageWindow(len(msgs), page)
+		page = clampPage(page, pages)
 
 		w.Clear()
 		w.Color(screen.Cyan)
@@ -89,7 +92,8 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 		if len(msgs) == 0 {
 			w.Line("  (no messages)")
 		}
-		for i, m := range msgs {
+		for i := lo; i < hi; i++ {
+			m := msgs[i]
 			w.Color(screen.Yellow)
 			w.Printf("  %d) ", i+1)
 			w.Color(screen.White)
@@ -97,6 +101,7 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 			w.Reset()
 			w.Printf("  — %s, %s\r\n", handles.handle(m.AuthorID), m.PostedAt.Format("2006-01-02"))
 		}
+		pageFooter(w, page, pages)
 		w.Color(screen.Green)
 		w.Print("\r\n[#] read  [P]ost  [S]earch  [U] by user  [D] sort  [C]lear  [Q]uit: ")
 		w.Reset()
@@ -108,16 +113,20 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 		switch {
 		case in == "" || strings.EqualFold(in, "q"):
 			return nil
+		case in == ">":
+			page++
+		case in == "<":
+			page--
 		case strings.EqualFold(in, "p"):
-			listed, listedHeader = nil, ""
+			listed, listedHeader, page = nil, "", 0
 			if err := compose(s, st, u, area.ID, nil); err != nil {
 				return err
 			}
 		case strings.EqualFold(in, "d"):
 			newestFirst = !newestFirst
-			listed, listedHeader = nil, ""
+			listed, listedHeader, page = nil, "", 0
 		case strings.EqualFold(in, "c"):
-			listed, listedHeader = nil, ""
+			listed, listedHeader, page = nil, "", 0
 		case strings.EqualFold(in, "s"):
 			w.Color(screen.Green)
 			w.Print("\r\nSearch text: ")
@@ -129,7 +138,7 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 				if serr != nil {
 					return serr
 				}
-				listed, listedHeader = res, fmt.Sprintf("search %q — %d hit(s)", q, len(res))
+				listed, listedHeader, page = res, fmt.Sprintf("search %q — %d hit(s)", q, len(res)), 0
 			}
 		case strings.EqualFold(in, "u"):
 			w.Color(screen.Green)
@@ -142,7 +151,7 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 				if ferr != nil {
 					return ferr
 				}
-				listed, listedHeader = res, fmt.Sprintf("by %s — %d message(s)", target.Handle, len(res))
+				listed, listedHeader, page = res, fmt.Sprintf("by %s — %d message(s)", target.Handle, len(res)), 0
 			} else {
 				w.ColorLine(screen.Red, "no such user")
 			}

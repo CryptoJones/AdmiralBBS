@@ -13,6 +13,7 @@ import (
 // RunMail drives the private-mail subsystem (inbox, read, compose).
 func RunMail(s *session.Session, st *store.Store, u *store.User) error {
 	handles := newHandleCache(st)
+	page := 0
 	for {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
@@ -33,10 +34,13 @@ func RunMail(s *session.Session, st *store.Store, u *store.User) error {
 			}
 			inbox = kept
 		}
+		lo, hi, pages := pageWindow(len(inbox), page)
+		page = clampPage(page, pages)
 		if len(inbox) == 0 {
 			w.Line("  (your inbox is empty)")
 		}
-		for i, m := range inbox {
+		for i := lo; i < hi; i++ {
+			m := inbox[i]
 			tag := "   "
 			if m.ReadAt == nil {
 				tag = "NEW"
@@ -53,6 +57,7 @@ func RunMail(s *session.Session, st *store.Store, u *store.User) error {
 			w.Reset()
 			w.Printf("  — from %s, %s\r\n", handles.handle(m.FromID), m.SentAt.Format("2006-01-02"))
 		}
+		pageFooter(w, page, pages)
 		w.Color(screen.Green)
 		w.Print("\r\n[#] read  [C]ompose  [Q]uit: ")
 		w.Reset()
@@ -64,6 +69,10 @@ func RunMail(s *session.Session, st *store.Store, u *store.User) error {
 		switch {
 		case in == "" || strings.EqualFold(in, "q"):
 			return nil
+		case in == ">":
+			page++
+		case in == "<":
+			page--
 		case strings.EqualFold(in, "c"):
 			if err := composeMail(s, st, u, handles); err != nil {
 				return err
