@@ -47,9 +47,22 @@ func (sl *SessionLog) Count() (int, error) {
 // Recent returns the latest audit events from the session_log mirror (newest
 // first), decrypting the free-text detail — for the SysOp audit viewer.
 func (sl *SessionLog) Recent(limit int) ([]audit.Event, error) {
+	return sl.Page(limit, 0)
+}
+
+// Page returns a window of audit events (newest first), skipping the newest
+// `offset` rows and returning up to `limit`. Backs the SysOp paged viewer's
+// next/previous/jump navigation. offset/limit below 0 are clamped to 0.
+func (sl *SessionLog) Page(limit, offset int) ([]audit.Event, error) {
+	if limit < 0 {
+		limit = 0
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	rows, err := sl.st.db.Query(
 		`SELECT session_id, username, transport, remote_ip, event_type, action, detail, minutes, at
-		 FROM session_log ORDER BY id DESC LIMIT ?`, limit)
+		 FROM session_log ORDER BY id DESC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
 		return nil, err
 	}

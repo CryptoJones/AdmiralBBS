@@ -2,6 +2,7 @@ package tests
 
 import (
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -181,5 +182,56 @@ func TestAuditDualWriteMirrorsToSessionLog(t *testing.T) {
 	}
 	if detail == "" || detail == "top secret" {
 		t.Fatalf("detail should be encrypted at rest, got %q", detail)
+	}
+}
+
+// Page windows the audit mirror newest-first with an offset, so the SysOp viewer
+// can page forward/back and jump. Verifies ordering, offset, and clamping.
+func TestSessionLogPage(t *testing.T) {
+	s, _ := openTestStore(t)
+	sl := s.SessionLog()
+	for i := 0; i < 25; i++ {
+		sl.Emit(audit.Event{Type: audit.TypeActivity, SessionID: "s", Action: "ev" + strconv.Itoa(i), Time: time.Now()})
+	}
+
+	// Page 0 (newest 10): ev24 .. ev15, newest first.
+	p0, err := sl.Page(10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p0) != 10 || p0[0].Action != "ev24" || p0[9].Action != "ev15" {
+		t.Fatalf("page 0 = %s..%s (len %d), want ev24..ev15", p0[0].Action, p0[len(p0)-1].Action, len(p0))
+	}
+
+	// Next page (offset 10): ev14 .. ev5.
+	p1, err := sl.Page(10, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p1[0].Action != "ev14" || p1[9].Action != "ev5" {
+		t.Fatalf("page 1 = %s..%s, want ev14..ev5", p1[0].Action, p1[len(p1)-1].Action)
+	}
+
+	// Last partial page (offset 20): ev4 .. ev0 (5 rows).
+	p2, err := sl.Page(10, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p2) != 5 || p2[0].Action != "ev4" || p2[4].Action != "ev0" {
+		t.Fatalf("page 2 = %s..%s (len %d), want ev4..ev0 (5)", p2[0].Action, p2[len(p2)-1].Action, len(p2))
+	}
+
+	// Offset past the end yields an empty window (not an error).
+	pEnd, err := sl.Page(10, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pEnd) != 0 {
+		t.Fatalf("page past end len = %d, want 0", len(pEnd))
+	}
+
+	// Negative offset/limit clamp to 0 (defensive).
+	if _, err := sl.Page(-5, -5); err != nil {
+		t.Fatalf("negative args should clamp, not error: %v", err)
 	}
 }

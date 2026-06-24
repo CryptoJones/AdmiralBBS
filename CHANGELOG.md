@@ -13,6 +13,17 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.1.0] - 2026-06-24
+
+### Added
+- **Paged audit log viewer.** The SysOp audit log was a single fixed screen of
+  the 20 newest events with no way to look further back. It is now an interactive
+  pager: `[N]ext` page, `[P]rev`, `[F]` jump +10 pages, `[R]` jump −10 pages
+  (both clamped to the available range), and `[Q]` to exit. The header shows the
+  current page, total pages, and the event range. The JSONL chain verification
+  and rapid-IP-change summaries are computed once on entry (not re-run per page),
+  so navigation stays fast. New `store.SessionLog.Page(limit, offset)` backs it.
+
 ## [1.0.9] - 2026-06-24
 
 ### Fixed
@@ -142,7 +153,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.9...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.0
 [1.0.9]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.9
 [1.0.8]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.8
 [1.0.7]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.7
