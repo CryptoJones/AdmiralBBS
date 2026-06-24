@@ -27,6 +27,7 @@ type Player struct {
 	fighting     *Mob           // current mob target (nil = not in mob combat)
 	pvpTarget    *Player        // current PvP target in the Net (nil = not duelling)
 	party        *Party         // co-op crew (nil = solo)
+	partyInvite  *Player        // pending crew invite from this leader (nil = none); consent before joining
 	shieldTicks  int            // remaining ticks of the mirror program's damage shield
 	shieldAmt    int            // flat damage reduction while shielded
 	dirty        bool           // output was sent since the last prompt (gates tick re-prompts)

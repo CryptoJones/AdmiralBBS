@@ -13,6 +13,20 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.2.0] - 2026-06-24
+
+### Changed
+- **Console Cowboy: crews are now consent-based with a leader.** Previously
+  `group <runner>` *conscripted* the target into your crew with no say — anyone
+  could force-group anyone. Now:
+  - `invite <runner>` (or `group <runner>`) sends an **invite**; the target must
+    `accept` (or `decline`). No one is added without consent.
+  - Only the **crew leader** can invite. A solo runner forming a crew becomes its
+    leader; leadership passes to the next member if the leader leaves.
+  - `group`/`crew` shows the crew (leader marked); pending invites expire when
+    either party jacks out.
+  Found in live co-op play.
+
 ## [1.1.2] - 2026-06-24
 
 ### Fixed
@@ -172,7 +186,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.2.0
 [1.1.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.2
 [1.1.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.1
 [1.1.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.0

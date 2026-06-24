@@ -94,9 +94,17 @@ func TestCowboyPartyXPShareAndChat(t *testing.T) {
 	o2, b2 := sink()
 	p2 := w.Connect("Molly", o2)
 
+	// Consent flow: p1 (leader) invites Molly — she is NOT conscripted; she must accept.
 	w.Command(p1, "group Molly")
+	if strings.Contains(b1.String(), "joins the crew") {
+		t.Fatal("invite must NOT auto-join the target")
+	}
+	if !strings.Contains(b2.String(), "invites you to crew up") {
+		t.Fatal("target should receive an invite with an ACCEPT prompt")
+	}
+	w.Command(p2, "accept")
 	if !strings.Contains(b1.String(), "joins the crew") {
-		t.Fatal("group should form a crew (no join notice)")
+		t.Fatal("crew should form once the invite is accepted")
 	}
 
 	// Both to the back alley.
@@ -162,5 +170,39 @@ func TestCowboyLeaderboard(t *testing.T) {
 	s := buf.String()
 	if !strings.Contains(s, "TOP CONSOLE COWBOYS") || !strings.Contains(s, "Cid") || !strings.Contains(s, "Ace") {
 		t.Errorf("leaderboard output missing names:\n%s", lastLines(s))
+	}
+}
+
+// Crews require consent: no force-join, only the leader invites, and a declined
+// invite leaves the runner solo. (Regression: GROUP <name> used to conscript.)
+func TestCowboyCrewInviteConsentAndLeaderOnly(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	o1, _ := sink()
+	p1 := w.Connect("Case", o1)
+	o2, _ := sink()
+	p2 := w.Connect("Molly", o2)
+	o3, b3 := sink()
+	p3 := w.Connect("Armitage", o3)
+
+	w.Command(p1, "group Molly") // leader invites
+	w.Command(p2, "accept")      // Molly consents -> Case leads a 2-person crew
+
+	// A non-leader cannot invite.
+	b3.Reset()
+	w.Command(p2, "invite Armitage")
+	if strings.Contains(b3.String(), "invites you to crew up") {
+		t.Fatal("a non-leader must not be able to invite")
+	}
+
+	// Leader invites Armitage, who DECLINES and stays solo.
+	w.Command(p1, "invite Armitage")
+	if !strings.Contains(b3.String(), "invites you to crew up") {
+		t.Fatal("leader invite should reach the target")
+	}
+	w.Command(p3, "decline")
+	b3.Reset()
+	w.Command(p3, "gsay hello?")
+	if !strings.Contains(b3.String(), "no crew") {
+		t.Fatal("a declined invite must not place the runner in a crew")
 	}
 }
