@@ -121,7 +121,7 @@ func main() {
 			return
 		}
 		enforceBudget(s, db, u, *dailyMinutes)
-		_ = menu.Member(db, u, *artPath).Run(s)
+		_ = menu.Member(db, u, *artPath, *auditPath).Run(s)
 	}
 
 	var wg sync.WaitGroup
