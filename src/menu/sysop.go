@@ -301,44 +301,100 @@ func contentManagement(s *session.Session, st *store.Store) error {
 	return e
 }
 
+// auditPageSize is how many audit events fill one screen of the paged viewer.
+const auditPageSize = 15
+
 func auditViewer(s *session.Session, st *store.Store, auditPath string) error {
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
-	w.Clear()
-	w.ColorLine(screen.Cyan, "Audit Log — recent events")
-	events, err := st.SessionLog().Recent(20)
+
+	total, err := st.SessionLog().Count()
 	if err != nil {
 		return err
 	}
-	for _, e := range events {
-		w.Printf("  %s %-10s %-12s %-9s ", e.Time.Format("01-02 15:04"), trunc(e.Username, 10), trunc(e.SessionID, 12), e.Type)
-		w.SafePrint(e.Action)
-		w.Print("\r\n")
-	}
-	// Rapid-IP-change ("impossible travel") flags — visibility only.
-	if anomalies, _ := st.Anomalies().Recent(5); len(anomalies) > 0 {
-		handles := newHandleCache(st)
-		w.Print("\r\n")
-		w.ColorLine(screen.Yellow, "Rapid IP changes (review — not auto-blocked):")
-		for _, a := range anomalies {
-			w.Printf("  %s %-10s %s -> %s after %ds\r\n",
-				a.At.Format("01-02 15:04"), trunc(handles.handle(a.UserID), 10),
-				a.PrevIP, a.NewIP, a.GapSeconds)
-		}
+	totalPages := (total + auditPageSize - 1) / auditPageSize
+	if totalPages < 1 {
+		totalPages = 1
 	}
 
-	w.Print("\r\n")
+	// One-time summaries (expensive / stable) computed before the nav loop so
+	// paging is snappy: the JSONL chain verify reads the whole trail, and the
+	// anomaly list is a fixed recent snapshot.
+	var chainMsg string
+	var chainColor = screen.Green
 	if auditPath != "" {
-		n, verr := st.VerifyAuditChain(auditPath)
-		if verr != nil {
-			w.ColorLine(screen.Red, fmt.Sprintf("CHAIN VERIFY FAILED — possible tampering: %v", verr))
+		if n, verr := st.VerifyAuditChain(auditPath); verr != nil {
+			chainColor = screen.Red
+			chainMsg = fmt.Sprintf("CHAIN VERIFY FAILED — possible tampering: %v", verr)
 		} else {
-			w.ColorLine(screen.Green, fmt.Sprintf("Authoritative JSONL chain verified intact: %d events.", n))
+			chainMsg = fmt.Sprintf("Authoritative JSONL chain verified intact: %d events.", n)
 		}
 	}
-	w.Print("\r\nPress any key...")
-	_, e := s.ReadKey()
-	return e
+	anomalies, _ := st.Anomalies().Recent(5)
+	handles := newHandleCache(st)
+
+	page := 0 // 0 = newest page; higher = older
+	for {
+		events, err := st.SessionLog().Page(auditPageSize, page*auditPageSize)
+		if err != nil {
+			return err
+		}
+		w.Clear()
+		first := page*auditPageSize + 1
+		last := page*auditPageSize + len(events)
+		w.ColorLine(screen.Cyan, fmt.Sprintf("Audit Log — page %d/%d  (events %d-%d of %d, newest first)",
+			page+1, totalPages, first, last, total))
+		for _, e := range events {
+			w.Printf("  %s %-10s %-12s %-9s ", e.Time.Format("01-02 15:04"), trunc(e.Username, 10), trunc(e.SessionID, 12), e.Type)
+			w.SafePrint(e.Action)
+			w.Print("\r\n")
+		}
+		if len(events) == 0 {
+			w.Line("  (no events on this page)")
+		}
+		// Rapid-IP-change ("impossible travel") flags — visibility only.
+		if len(anomalies) > 0 {
+			w.Print("\r\n")
+			w.ColorLine(screen.Yellow, "Rapid IP changes (review — not auto-blocked):")
+			for _, a := range anomalies {
+				w.Printf("  %s %-10s %s -> %s after %ds\r\n",
+					a.At.Format("01-02 15:04"), trunc(handles.handle(a.UserID), 10),
+					a.PrevIP, a.NewIP, a.GapSeconds)
+			}
+		}
+		w.Print("\r\n")
+		if chainMsg != "" {
+			w.ColorLine(chainColor, chainMsg)
+		}
+		w.Print("\r\n")
+		w.ColorLine(screen.White, "[N]ext page  [P]rev  [F] +10 pages  [R] -10 pages  [Q] exit")
+		w.Color(screen.Green)
+		w.Print("Choice: ")
+		w.Reset()
+
+		k, e := s.ReadKey()
+		if e != nil {
+			return e
+		}
+		switch k {
+		case 'n', 'N', '\r', '\n', ' ':
+			page++
+		case 'p', 'P':
+			page--
+		case 'f', 'F', '>', '+':
+			page += 10
+		case 'r', 'R', '<', '-':
+			page -= 10
+		case 'q', 'Q':
+			return nil
+		}
+		if page > totalPages-1 {
+			page = totalPages - 1
+		}
+		if page < 0 {
+			page = 0
+		}
+	}
 }
 
 func reportsQueue(s *session.Session, st *store.Store, sysop *store.User) error {
