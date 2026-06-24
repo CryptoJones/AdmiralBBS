@@ -18,6 +18,13 @@ type Opts struct {
 	CPULimit int           // CPU-seconds rlimit (default 120)
 	Term     string        // TERM handed to the door
 
+	// Multiplayer / state. WorkDir is the door's per-session working dir
+	// (persistent; holds this node's door32.sys). ShareDir is a per-door
+	// directory shared by all players (passed as $DOORSHARE) for multiplayer
+	// state. If WorkDir is empty, a throwaway temp jail is used (stateless).
+	WorkDir  string
+	ShareDir string
+
 	// Deploy-time isolation (opt-in; needs privilege). Zero values = disabled,
 	// so the default non-root run is unaffected.
 	RunAsUID  int    // drop to this uid before exec (0 = no drop)
@@ -50,15 +57,29 @@ func Launch(sess io.ReadWriter, command string, args []string, drop DropInfo, op
 		opts.CPULimit = 120
 	}
 
-	jail, err := os.MkdirTemp("", "bbsdoor-")
-	if err != nil {
-		return err
+	// Working dir: a persistent per-session dir (so door state survives and
+	// concurrent players don't clobber each other's dropfile), or a throwaway
+	// jail when none is given (stateless doors / tests).
+	var workDir string
+	if opts.WorkDir != "" {
+		workDir = opts.WorkDir
+		if err := os.MkdirAll(workDir, 0o700); err != nil {
+			return err
+		}
+	} else {
+		jail, err := os.MkdirTemp("", "bbsdoor-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(jail)
+		workDir = jail
 	}
-	defer os.RemoveAll(jail)
-	if err := os.Chmod(jail, 0o700); err != nil {
-		return err
+	if opts.ShareDir != "" {
+		if err := os.MkdirAll(opts.ShareDir, 0o700); err != nil {
+			return err
+		}
 	}
-	if err := WriteDoor32(filepath.Join(jail, "door32.sys"), drop); err != nil {
+	if err := WriteDoor32(filepath.Join(workDir, "door32.sys"), drop); err != nil {
 		return err
 	}
 
@@ -70,8 +91,8 @@ func Launch(sess io.ReadWriter, command string, args []string, drop DropInfo, op
 	sh := fmt.Sprintf("ulimit -t %d 2>/dev/null; exec \"$@\"", opts.CPULimit)
 	argv := append([]string{"-c", sh, "sh", command}, args...)
 	cmd := exec.CommandContext(ctx, "/bin/sh", argv...)
-	cmd.Dir = jail
-	cmd.Env = scrubbedEnv(jail, opts.Term)
+	cmd.Dir = workDir
+	cmd.Env = scrubbedEnv(workDir, opts.Term, opts.ShareDir)
 	// Give the child stdin via an *os.File pipe (a real fd), NOT the session
 	// reader. If the session is cmd.Stdin, cmd.Wait blocks forever on the
 	// stdin-copy goroutine after the door exits — freezing the caller. We
@@ -113,14 +134,18 @@ func Launch(sess io.ReadWriter, command string, args []string, drop DropInfo, op
 
 // scrubbedEnv builds a minimal env from scratch — nothing inherited, so no
 // secret in the daemon's environment can reach a door.
-func scrubbedEnv(home, term string) []string {
+func scrubbedEnv(home, term, share string) []string {
 	if term == "" {
 		term = "ansi"
 	}
-	return []string{
+	env := []string{
 		"PATH=/usr/bin:/bin",
 		"HOME=" + home,
 		"TERM=" + term,
 		"DOORFILE=" + filepath.Join(home, "door32.sys"),
 	}
+	if share != "" {
+		env = append(env, "DOORSHARE="+share) // shared multiplayer data dir
+	}
+	return env
 }

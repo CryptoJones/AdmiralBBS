@@ -231,10 +231,25 @@ func contentManagement(s *session.Session, st *store.Store) error {
 		}
 	case '3':
 		name := prompt(s, w, "Door name: ")
-		cmd := prompt(s, w, "Command (path): ")
-		if name != "" && cmd != "" {
-			st.Doors().Create(name, cmd, "door32.sys", 0)
-			w.ColorLine(screen.Cyan, "Registered.")
+		if name == "" {
+			break
+		}
+		w.Color(screen.Green)
+		w.Print("\r\n[s]ubprocess door or [r]esident multiplayer server? ")
+		w.Reset()
+		k, _ := s.ReadKey()
+		if toLower(k) == 'r' {
+			addr := prompt(s, w, "Game address (host:port): ")
+			if addr != "" {
+				st.Doors().CreateResident(name, "tcp", addr, 0)
+				w.ColorLine(screen.Cyan, "Registered resident (multiplayer) door.")
+			}
+		} else {
+			cmd := prompt(s, w, "Command (path): ")
+			if cmd != "" {
+				st.Doors().Create(name, cmd, "door32.sys", 0)
+				w.ColorLine(screen.Cyan, "Registered.")
+			}
 		}
 	default:
 		return nil

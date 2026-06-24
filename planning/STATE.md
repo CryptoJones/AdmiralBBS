@@ -18,7 +18,16 @@ added the missing SysOp bootstrap (`cmd/sysopctl` — the panel was unreachable)
 added graceful shutdown, and added the integration coverage that was missing
 (`TestFullMemberJourney` driving the real menus end-to-end + door-through-launcher
 e2e + telnet IAC fuzz). Lesson: ship an end-to-end test of the real journey, not
-just unit tests, before calling anything done. Original active-sprint history below.
+just unit tests, before calling anything done.
+
+**S012 (multi-user correctness & door models)** — more gaps CJ surfaced: per-user
+session cap (session.Presence — a user could multiply their daily budget by logging
+in 50× at once); node pool (unique node per session); all three door models now
+(single-player, turn-based file-shared via $DOORSHARE, and RESIDENT real-time
+multiplayer MajorMUD-style via doors.Bridge + a 'resident' door kind, migration
+003); persistent door working dirs; and message-board search / sort-by-date /
+filter-by-user (search decrypts since content is sealed). Remaining (flagged):
+pagination, delete/edit, unread pointers, who's-online. Original history below.
 
 ## Autonomous loop history
 

@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -45,6 +46,9 @@ func main() {
 	doorChroot := flag.String("door-chroot", "", "chroot door games into this dir (Linux; needs /bin/sh inside)")
 	doorNoNet := flag.Bool("door-no-network", false, "run door games with no network (Linux; needs root)")
 	doorIsolate := flag.Bool("door-isolate", false, "run door games in fresh namespaces (Linux; needs root)")
+	maxPerUser := flag.Int("max-per-user", 1, "max concurrent sessions per user (one node per caller)")
+	nodes := flag.Int("nodes", 64, "max concurrent member sessions (node count)")
+	doorsDataFlag := flag.String("doors-data", "", "persistent door data dir (default <db-dir>/doors-data)")
 	flag.Parse()
 
 	// Hardening posture: never run privileged (DECISIONS.md).
@@ -104,6 +108,13 @@ func main() {
 		os.Exit(0)
 	}()
 
+	presence := session.NewPresence(*maxPerUser)
+	nodePool := session.NewNodePool(*nodes)
+	doorsData := *doorsDataFlag
+	if doorsData == "" {
+		doorsData = filepath.Join(filepath.Dir(*dbPath), "doors-data")
+	}
+
 	var counter atomic.Uint64
 	limits := transport.Limits{MaxSessions: *maxSessions, PerIP: *perIP, HandshakeTimeout: 10 * time.Second}
 
@@ -141,9 +152,25 @@ func main() {
 		if !ok {
 			return
 		}
+		cap := s.Cap()
+		w := screen.New(s, cap.ANSI, cap.Cols)
+		// One node per caller: reject extra concurrent logins by the same user
+		// (otherwise they multiply their daily time budget).
+		if !presence.Enter(u.Handle) {
+			w.ColorLine(screen.Red, fmt.Sprintf("You're already logged in (limit %d). NO CARRIER", presence.Max()))
+			return
+		}
+		defer presence.Leave(u.Handle)
+		node := nodePool.Acquire()
+		if node == 0 {
+			w.ColorLine(screen.Red, "All nodes are busy right now — try again shortly. NO CARRIER")
+			return
+		}
+		defer nodePool.Release(node)
+
 		enforceBudget(s, db, u, *dailyMinutes)
 		doorOpts := doors.Opts{RunAsUID: *doorUID, RunAsGID: *doorGID, Chroot: *doorChroot, NoNetwork: *doorNoNet, Isolate: *doorIsolate}
-		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts).Run(s)
+		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts, node, doorsData).Run(s)
 	}
 
 	var wg sync.WaitGroup
