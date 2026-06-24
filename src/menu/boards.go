@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -54,21 +55,38 @@ func RunBoards(s *session.Session, st *store.Store, u *store.User) error {
 }
 
 func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.MessageArea, handles *handleCache) error {
+	newestFirst := false
+	var listed []*store.Message // non-nil => an active search/filter result
+	var listedHeader string
 	for {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
+
+		msgs := listed
+		header := listedHeader
+		if msgs == nil {
+			var err error
+			msgs, err = st.Messages().ThreadSorted(area.ID, newestFirst)
+			if err != nil {
+				return err
+			}
+		}
+
 		w.Clear()
 		w.Color(screen.Cyan)
 		w.Print("Board: ")
 		w.SafePrint(area.Name)
-		w.Print("\r\n")
+		ord := "oldest first"
+		if newestFirst {
+			ord = "newest first"
+		}
+		w.Printf("   (%s)\r\n", ord)
 		w.Reset()
-		msgs, err := st.Messages().Thread(area.ID)
-		if err != nil {
-			return err
+		if header != "" {
+			w.ColorLine(screen.Blue, header)
 		}
 		if len(msgs) == 0 {
-			w.Line("  (no messages yet — be the first)")
+			w.Line("  (no messages)")
 		}
 		for i, m := range msgs {
 			w.Color(screen.Yellow)
@@ -79,7 +97,7 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 			w.Printf("  — %s, %s\r\n", handles.handle(m.AuthorID), m.PostedAt.Format("2006-01-02"))
 		}
 		w.Color(screen.Green)
-		w.Print("\r\n[#] read  [P]ost  [Q]uit: ")
+		w.Print("\r\n[#] read  [P]ost  [S]earch  [U] by user  [D] sort  [C]lear  [Q]uit: ")
 		w.Reset()
 		in, err := s.ReadLine()
 		if err != nil {
@@ -90,8 +108,42 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 		case in == "" || strings.EqualFold(in, "q"):
 			return nil
 		case strings.EqualFold(in, "p"):
+			listed, listedHeader = nil, ""
 			if err := compose(s, st, u, area.ID, nil); err != nil {
 				return err
+			}
+		case strings.EqualFold(in, "d"):
+			newestFirst = !newestFirst
+			listed, listedHeader = nil, ""
+		case strings.EqualFold(in, "c"):
+			listed, listedHeader = nil, ""
+		case strings.EqualFold(in, "s"):
+			w.Color(screen.Green)
+			w.Print("\r\nSearch text: ")
+			w.Reset()
+			q, _ := s.ReadLine()
+			q = strings.TrimSpace(q)
+			if q != "" {
+				res, serr := st.Messages().Search(area.ID, q)
+				if serr != nil {
+					return serr
+				}
+				listed, listedHeader = res, fmt.Sprintf("search %q — %d hit(s)", q, len(res))
+			}
+		case strings.EqualFold(in, "u"):
+			w.Color(screen.Green)
+			w.Print("\r\nFilter by handle: ")
+			w.Reset()
+			h, _ := s.ReadLine()
+			h = strings.TrimSpace(h)
+			if target, terr := st.Users().ByHandle(h); terr == nil {
+				res, ferr := st.Messages().ByAuthor(area.ID, target.ID)
+				if ferr != nil {
+					return ferr
+				}
+				listed, listedHeader = res, fmt.Sprintf("by %s — %d message(s)", target.Handle, len(res))
+			} else {
+				w.ColorLine(screen.Red, "no such user")
 			}
 		default:
 			if n, perr := strconv.Atoi(in); perr == nil && n >= 1 && n <= len(msgs) {

@@ -1,6 +1,8 @@
 package menu
 
 import (
+	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +16,7 @@ import (
 // RunDoors lists the door games a member may play and launches the chosen one
 // as a sandboxed subprocess wired to the session. base carries the deploy-time
 // isolation options (uid/chroot/namespaces); per-launch Timeout/Term are added.
-func RunDoors(s *session.Session, st *store.Store, u *store.User, base doors.Opts) error {
+func RunDoors(s *session.Session, st *store.Store, u *store.User, base doors.Opts, node int, doorsData string) error {
 	for {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
@@ -51,35 +53,49 @@ func RunDoors(s *session.Session, st *store.Store, u *store.User, base doors.Opt
 		if perr != nil || n < 1 || n > len(list) {
 			continue
 		}
-		if err := playDoor(s, u, list[n-1], base); err != nil {
+		if err := playDoor(s, u, list[n-1], base, node, doorsData); err != nil {
 			return err
 		}
 	}
 }
 
-func playDoor(s *session.Session, u *store.User, d *store.Door, base doors.Opts) error {
+func playDoor(s *session.Session, u *store.User, d *store.Door, base doors.Opts, node int, doorsData string) error {
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
 	w.Clear()
 	w.Color(screen.Magenta)
 	w.Print("Launching ")
 	w.SafePrint(d.Name)
-	w.Print("...\r\n\r\n")
+	w.Printf(" (node %d)...\r\n\r\n", node)
 	w.Reset()
 	s.Activity("door-launch", d.Name)
 
-	drop := doors.DropInfo{
-		BBSName:     "AdmiralBBS",
-		Handle:      u.Handle,
-		AccessLevel: u.AccessLevel,
-		MinutesLeft: 30,
-		Node:        1,
-		ANSI:        cap.ANSI,
+	var err error
+	if d.Kind == store.KindResident {
+		// Persistent multiplayer server (MajorMUD-style): relay to the one
+		// running game so all callers share the world.
+		net := d.Network
+		if net == "" {
+			net = "tcp"
+		}
+		err = doors.Bridge(s.Raw(), net, d.Address, 10*time.Second)
+	} else {
+		slug := slugify(d.Name)
+		opts := base
+		opts.Timeout = 15 * time.Minute
+		opts.Term = termOf(cap.ANSI)
+		opts.WorkDir = filepath.Join(doorsData, slug, fmt.Sprintf("node%d", node)) // per-node, persistent
+		opts.ShareDir = filepath.Join(doorsData, slug, "shared")                   // shared multiplayer state
+		drop := doors.DropInfo{
+			BBSName:     "AdmiralBBS",
+			Handle:      u.Handle,
+			AccessLevel: u.AccessLevel,
+			MinutesLeft: 30,
+			Node:        node,
+			ANSI:        cap.ANSI,
+		}
+		err = doors.Launch(s.Raw(), d.Command, nil, drop, opts)
 	}
-	opts := base
-	opts.Timeout = 15 * time.Minute
-	opts.Term = termOf(cap.ANSI)
-	err := doors.Launch(s.Raw(), d.Command, nil, drop, opts)
 
 	w.Color(screen.Cyan)
 	w.Print("\r\n\r\n")
@@ -91,6 +107,23 @@ func playDoor(s *session.Session, u *store.User, d *store.Door, base doors.Opts)
 	}
 	_, kerr := s.ReadKey()
 	return kerr
+}
+
+func slugify(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case b.Len() > 0:
+			b.WriteByte('-')
+		}
+	}
+	out := strings.Trim(b.String(), "-")
+	if out == "" {
+		out = "door"
+	}
+	return out
 }
 
 func termOf(ansi bool) string {

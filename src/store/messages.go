@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -138,6 +139,39 @@ func (r *Messages) scan(row interface{ Scan(...any) error }) (*Message, error) {
 // Thread lists top-level messages in an area (oldest first).
 func (r *Messages) Thread(areaID int64) ([]*Message, error) {
 	return r.list(`SELECT `+messageCols+` FROM message WHERE area_id = ? AND parent_id IS NULL ORDER BY id`, areaID)
+}
+
+// ThreadSorted lists top-level messages oldest- or newest-first (sort by date).
+func (r *Messages) ThreadSorted(areaID int64, newestFirst bool) ([]*Message, error) {
+	order := "ASC"
+	if newestFirst {
+		order = "DESC"
+	}
+	return r.list(`SELECT `+messageCols+` FROM message WHERE area_id = ? AND parent_id IS NULL ORDER BY id `+order, areaID)
+}
+
+// ByAuthor lists an area's messages from one author (filter by user). author_id
+// is not encrypted, so this is a direct SQL filter.
+func (r *Messages) ByAuthor(areaID, authorID int64) ([]*Message, error) {
+	return r.list(`SELECT `+messageCols+` FROM message WHERE area_id = ? AND author_id = ? ORDER BY id`, areaID, authorID)
+}
+
+// Search returns an area's messages whose subject or body contains query
+// (case-insensitive). Because subject/body are sealed at rest, this decrypts
+// each message and scans in Go — SQL can't search ciphertext.
+func (r *Messages) Search(areaID int64, query string) ([]*Message, error) {
+	all, err := r.list(`SELECT `+messageCols+` FROM message WHERE area_id = ? ORDER BY id`, areaID)
+	if err != nil {
+		return nil, err
+	}
+	q := strings.ToLower(query)
+	var out []*Message
+	for _, m := range all {
+		if strings.Contains(strings.ToLower(m.Subject), q) || strings.Contains(strings.ToLower(m.Body), q) {
+			out = append(out, m)
+		}
+	}
+	return out, nil
 }
 
 // Replies lists replies to a parent message (oldest first).

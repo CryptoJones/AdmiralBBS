@@ -6,6 +6,12 @@ import (
 	"os"
 )
 
+// Door kinds.
+const (
+	KindSubprocess = "subprocess" // spawn a process per player
+	KindResident   = "resident"   // bridge to a persistent multiplayer server
+)
+
 // Door is a registered door game.
 type Door struct {
 	ID             int64
@@ -13,6 +19,9 @@ type Door struct {
 	Command        string
 	DropfileFormat string
 	MinAccessLevel int
+	Kind           string // subprocess | resident
+	Network        string // resident: tcp | unix
+	Address        string // resident: dial address
 }
 
 // Doors is the door-game repository.
@@ -29,7 +38,19 @@ func (r *Doors) Create(name, command, dropfileFormat string, minLevel int) (*Doo
 		return nil, err
 	}
 	id, _ := res.LastInsertId()
-	return &Door{ID: id, Name: name, Command: command, DropfileFormat: dropfileFormat, MinAccessLevel: minLevel}, nil
+	return &Door{ID: id, Name: name, Command: command, DropfileFormat: dropfileFormat, MinAccessLevel: minLevel, Kind: KindSubprocess}, nil
+}
+
+// CreateResident registers a persistent multiplayer door the BBS bridges to.
+func (r *Doors) CreateResident(name, network, address string, minLevel int) (*Door, error) {
+	res, err := r.st.db.Exec(
+		`INSERT INTO door (name, command, kind, net_type, address, min_access_level) VALUES (?, '', ?, ?, ?, ?)`,
+		name, KindResident, network, address, minLevel)
+	if err != nil {
+		return nil, err
+	}
+	id, _ := res.LastInsertId()
+	return &Door{ID: id, Name: name, Kind: KindResident, Network: network, Address: address, MinAccessLevel: minLevel}, nil
 }
 
 func (r *Doors) Count() (int, error) {
@@ -40,13 +61,13 @@ func (r *Doors) Count() (int, error) {
 
 func (r *Doors) scan(row interface{ Scan(...any) error }) (*Door, error) {
 	var d Door
-	if err := row.Scan(&d.ID, &d.Name, &d.Command, &d.DropfileFormat, &d.MinAccessLevel); err != nil {
+	if err := row.Scan(&d.ID, &d.Name, &d.Command, &d.DropfileFormat, &d.MinAccessLevel, &d.Kind, &d.Network, &d.Address); err != nil {
 		return nil, err
 	}
 	return &d, nil
 }
 
-const doorCols = `id, name, command, dropfile_format, min_access_level`
+const doorCols = `id, name, command, dropfile_format, min_access_level, kind, net_type, address`
 
 // Visible lists doors the access level may launch.
 func (r *Doors) Visible(accessLevel int) ([]*Door, error) {

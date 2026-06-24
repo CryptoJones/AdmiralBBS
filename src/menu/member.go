@@ -9,12 +9,12 @@ import (
 // Member builds the authenticated member's main menu. Subsystem entries are
 // placeholders until their sprints land; the Profile entry (self-service SSH
 // key management) is live now.
-func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts doors.Opts) *Menu {
+func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts doors.Opts, node int, doorsData string) *Menu {
 	items := []Item{
 		{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u)},
 		{Key: 'E', Label: "Private Mail", Action: mailAction(st, u)},
 		{Key: 'F', Label: "File Library", Action: filesAction(st, u)},
-		{Key: 'D', Label: "Door Games", Action: doorsAction(st, u, doorOpts)},
+		{Key: 'D', Label: "Door Games", Action: doorsAction(st, u, doorOpts, node, doorsData)},
 		{Key: 'K', Label: "My SSH Keys / Profile", Action: profileAction(st, u)},
 	}
 	if u.AccessLevel >= CoSysOpLevel {
@@ -69,9 +69,9 @@ func filesAction(st *store.Store, u *store.User) Action {
 	}
 }
 
-func doorsAction(st *store.Store, u *store.User, doorOpts doors.Opts) Action {
+func doorsAction(st *store.Store, u *store.User, doorOpts doors.Opts, node int, doorsData string) Action {
 	return func(s *session.Session) (Outcome, error) {
-		if err := RunDoors(s, st, u, doorOpts); err != nil {
+		if err := RunDoors(s, st, u, doorOpts, node, doorsData); err != nil {
 			return Logoff, err
 		}
 		return Continue, nil

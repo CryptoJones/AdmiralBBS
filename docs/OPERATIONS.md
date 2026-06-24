@@ -57,6 +57,27 @@ The control panel is gated to access level ≥80, and access level is only grant
 `sysopctl list` shows all users + status; `promote <handle> [level]` adjusts an
 existing user directly.
 
+## Concurrency limits
+
+- `-nodes N` — max simultaneous member sessions (node pool; each caller gets a
+  unique node number). `-max-per-user N` — concurrent sessions per user (default
+  1, "one node per caller"; prevents multiplying the daily time budget by logging
+  in many times at once). Plus the transport `-max-sessions` / `-per-ip` caps.
+
+## Door games (three kinds)
+
+- **Single-player** — `subprocess`; each player gets their own process in a
+  per-node working dir (`<doors-data>/<slug>/node<N>/`).
+- **Turn-based file-shared multiplayer** (LORD-style) — `subprocess` too; shared
+  state goes in `<doors-data>/<slug>/shared/`, passed to the door as `$DOORSHARE`.
+  The unique node number namespaces per-player files.
+- **Resident real-time multiplayer** (MajorMUD / Worldgroup) — `resident`; the
+  game runs as its own persistent server and the BBS BRIDGES each caller to it
+  (`net_type`+`address`), so all callers share one live world. Register via the
+  SysOp panel (`X` → Create → resident) and run the game server separately.
+
+`-doors-data <dir>` sets the persistent door-data root (default `<db-dir>/doors-data`).
+
 ## Threat model (be honest with yourself)
 
 - **Effective against offline access:** a stolen disk, copied volume, image
