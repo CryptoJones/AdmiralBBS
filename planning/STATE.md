@@ -17,6 +17,16 @@ bottom, each item tested and landed on `main` with a verified-green CI run:
 - S021 rapid-IP-change ("impossible travel") flagging (visibility only)
 Schema is at migration 008. CI green @ `5f4bad4`.
 
+**S022 (Console Cowboy 2026 — multiplayer cyberpunk MUD, 2026-06-24)** — a new
+resident door game. Standalone engine (`src/game/cowboy`) + TCP server
+(`src/cmd/cowboy`); BBS bridges callers in via `-cowboy <addr>`. MajorMUD-style:
+shared world, rooms (Night City + the Net), to-hit-vs-AC combat on a tick,
+XP/level (cap 50)/€$ economy, shops, character creation (4 classes + skill
+points), and fixer bounty quests. Netrun twist: in the Net, ATTACK breaches ICE
+with Intelligence. Mechanics grounded in research (MajorMUD/LORD + CP2020/GURPS).
+Load-tested at 50 concurrent unique players in one world. See
+[`docs/CONSOLE_COWBOY.md`](CONSOLE_COWBOY.md).
+
 **S013 (file-library hardening + CI green)** — landed on `main @ e9d0dfd`.
 Atomic per-user upload quota (closes the TOCTOU race), duplicate-filename
 rejection, file-area search/sort/filter/delete, XMODEM upload byte-cap, and

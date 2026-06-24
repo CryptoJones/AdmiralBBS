@@ -1,0 +1,74 @@
+package cowboy
+
+import "strings"
+
+func (w *World) atVendor(p *Player) bool {
+	r := w.room(p.RoomID)
+	return r != nil && r.Vendor
+}
+
+func (w *World) list(p *Player) {
+	if !w.atVendor(p) {
+		p.send(style(dim, "There's no vendor here.") + crlf)
+		return
+	}
+	p.send(style(neon, "-- Vendor wares (BUY <item>) --") + crlf)
+	for _, x := range shopWares {
+		p.send("  " + style(gold, "€$"+itoa(x.price)) + "  " + x.name + style(dim, " — "+x.desc) + crlf)
+	}
+	p.send(style(dim, "You have €$"+itoa(p.Eddies)+".") + crlf)
+}
+
+func (w *World) buy(p *Player, arg string) {
+	if !w.atVendor(p) {
+		p.send(style(dim, "There's no vendor here.") + crlf)
+		return
+	}
+	name := strings.ToLower(strings.TrimSpace(arg))
+	x, ok := findWare(name)
+	if !ok {
+		p.send(style(dim, "No such item. Type LIST.") + crlf)
+		return
+	}
+	if p.Eddies < x.price {
+		p.send(style(red, "Not enough eddies (need €$"+itoa(x.price)+").") + crlf)
+		return
+	}
+	p.Eddies -= x.price
+	if x.bonus > 0 {
+		// A weapon: only upgrades (don't let a cheaper buy downgrade you).
+		if x.bonus <= p.WeaponBonus {
+			p.send(style(dim, "Your current weapon is already better.") + crlf)
+			p.Eddies += x.price // refund
+			return
+		}
+		p.WeaponBonus = x.bonus
+		p.WeaponName = x.name
+		p.send(style(green, "You jack in the "+x.name+". Attack +"+itoa(x.bonus)+".") + crlf)
+		return
+	}
+	p.Inv[x.name]++
+	p.send(style(green, "Bought "+x.name+". You have "+itoa(p.Inv[x.name])+".") + crlf)
+}
+
+func (w *World) use(p *Player, arg string) {
+	name := strings.ToLower(strings.TrimSpace(arg))
+	if p.Inv[name] <= 0 {
+		p.send(style(dim, "You don't have a "+name+".") + crlf)
+		return
+	}
+	x, ok := findWare(name)
+	if !ok || x.heal <= 0 {
+		p.send(style(dim, "You can't use that.") + crlf)
+		return
+	}
+	p.Inv[name]--
+	if p.Inv[name] == 0 {
+		delete(p.Inv, name)
+	}
+	p.HP += x.heal
+	if p.HP > p.MaxHP {
+		p.HP = p.MaxHP
+	}
+	p.send(style(green, "You slot the "+name+" — HP now "+itoa(p.HP)+"/"+itoa(p.MaxHP)+".") + crlf)
+}

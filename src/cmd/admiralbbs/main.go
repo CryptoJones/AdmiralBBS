@@ -49,6 +49,7 @@ func main() {
 	maxPerUser := flag.Int("max-per-user", 1, "max concurrent sessions per user (one node per caller)")
 	nodes := flag.Int("nodes", 64, "max concurrent member sessions (node count)")
 	doorsDataFlag := flag.String("doors-data", "", "persistent door data dir (default <db-dir>/doors-data)")
+	cowboyAddr := flag.String("cowboy", "", "register 'Console Cowboy 2026' resident door at this addr (e.g. 127.0.0.1:4000)")
 	flag.Parse()
 
 	// Hardening posture: never run privileged (DECISIONS.md).
@@ -85,6 +86,12 @@ func main() {
 	}
 	if err := db.EnsureSeedDoors(); err != nil {
 		log.Fatalf("seed doors: %v", err)
+	}
+	if *cowboyAddr != "" {
+		if err := db.Doors().EnsureResidentDoor("Console Cowboy 2026", "tcp", *cowboyAddr, 0); err != nil {
+			log.Fatalf("register Console Cowboy 2026 door: %v", err)
+		}
+		log.Printf("Console Cowboy 2026 resident door -> %s", *cowboyAddr)
 	}
 	log.Printf("database ready at %s (WAL, encrypted at rest)", *dbPath)
 

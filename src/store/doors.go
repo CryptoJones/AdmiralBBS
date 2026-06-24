@@ -106,6 +106,25 @@ func (r *Doors) ByID(id int64, accessLevel int) (*Door, error) {
 // Doors returns the door repository.
 func (s *Store) Doors() *Doors { return &Doors{st: s} }
 
+// EnsureResidentDoor idempotently registers a resident (multiplayer) door by
+// name, pointing at network+address. If a door with that name already exists it
+// updates its address (so moving the game server just needs a restart flag).
+func (r *Doors) EnsureResidentDoor(name, network, address string, minLevel int) error {
+	var id int64
+	err := r.st.db.QueryRow(`SELECT id FROM door WHERE name = ?`, name).Scan(&id)
+	if err == sql.ErrNoRows {
+		_, cerr := r.CreateResident(name, network, address, minLevel)
+		return cerr
+	}
+	if err != nil {
+		return err
+	}
+	_, err = r.st.db.Exec(
+		`UPDATE door SET kind = ?, net_type = ?, address = ?, command = '' WHERE id = ?`,
+		KindResident, network, address, id)
+	return err
+}
+
 // EnsureSeedDoors registers the bundled demo door on first run, if its script is
 // present relative to the working directory.
 func (s *Store) EnsureSeedDoors() error {
