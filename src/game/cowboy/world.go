@@ -50,6 +50,12 @@ func maxRAM(p *Player) int { return 5 + p.Intelligence/2 + p.DeckBonus }
 // SetRoll overrides the RNG (tests use this to make combat deterministic).
 func (w *World) SetRoll(f func(n int) int) { w.roll = f }
 
+// SetPrompter routes a player's status prompt to a dedicated sink (the server's
+// managed-prompt writer), so prompts can be redrawn around async output without
+// garbling the caller's in-progress input. nil = prompts go through the content
+// sink (the default/test behavior).
+func (w *World) SetPrompter(p *Player, fn func(string)) { p.prompter = fn }
+
 func (w *World) spawn(t *MobTemplate) {
 	w.mobs = append(w.mobs, &Mob{tmpl: t, origin: t, HP: t.HP, RoomID: t.Home})
 }

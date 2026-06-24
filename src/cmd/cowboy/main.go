@@ -103,15 +103,42 @@ type conn struct {
 	outCh  chan string
 	player *cowboy.Player
 	closed bool // set on the world goroutine during teardown
+
+	mu     sync.Mutex // guards inLine/prompt so output redraws don't race input echo
+	inLine []byte     // the caller's in-progress (un-submitted) input
+	prompt string     // the current status prompt (managed-prompt redraw)
 }
 
-// out enqueues text for the writer. Called only from the world goroutine, so the
-// non-blocking send (drop on overflow) protects the world from a stalled client.
-func (c *conn) out(s string) {
+// raw enqueues bytes for the writer. Non-blocking (drop on overflow) so a stalled
+// client can't block the world goroutine.
+func (c *conn) raw(s string) {
 	select {
 	case c.outCh <- s:
 	default:
 	}
+}
+
+// out is the simple pre-world sink (login/creation prompts; no input to preserve).
+func (c *conn) out(s string) { c.raw(s) }
+
+const clrLine = "\r\x1b[K" // CR + erase-to-end-of-line: wipe the current row
+
+// emit writes async/response content while PRESERVING the caller's in-progress
+// input: wipe the current prompt+input row, print the content, then redraw the
+// prompt with whatever they'd typed. This is what stops combat lines from
+// scrambling text the player is mid-typing.
+func (c *conn) emit(s string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.raw(clrLine + s + c.prompt + string(c.inLine))
+}
+
+// setPrompt updates the status prompt and redraws it (with current input).
+func (c *conn) setPrompt(p string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.prompt = p
+	c.raw(clrLine + c.prompt + string(c.inLine))
 }
 
 var (
@@ -175,13 +202,49 @@ func serve(nc net.Conn, events chan event) {
 		<-reply2
 	}
 
+	// In-world input loop with a MANAGED prompt: we own the input buffer here so
+	// async output (combat/chat) can wipe-and-redraw it via conn.emit/setPrompt
+	// without garbling what the caller is typing.
 	for {
-		line, err := cowboy.ReadLine(r, c.out)
+		b, err := r.ReadByte()
 		if err != nil {
 			events <- event{typ: evDisconnect, c: c}
 			return
 		}
-		events <- event{typ: evLine, c: c, line: line}
+		switch b {
+		case '\r', '\n':
+			if r.Buffered() > 0 { // swallow a buffered CRLF/LFCR partner (never block)
+				if nb, e := r.ReadByte(); e == nil {
+					if !((b == '\r' && nb == '\n') || (b == '\n' && nb == '\r')) {
+						_ = r.UnreadByte()
+					}
+				}
+			}
+			c.mu.Lock()
+			line := string(c.inLine)
+			c.inLine = c.inLine[:0]
+			c.raw("\r\n")
+			c.mu.Unlock()
+			events <- event{typ: evLine, c: c, line: line}
+		case 0x08, 0x7f: // backspace / DEL
+			c.mu.Lock()
+			if len(c.inLine) > 0 {
+				c.inLine = c.inLine[:len(c.inLine)-1]
+				c.raw("\b \b")
+			}
+			c.mu.Unlock()
+		case 0x00:
+			// ignore
+		case 0xff: // telnet IAC — skip it and its command byte
+			_, _ = r.ReadByte()
+		default:
+			if b >= 0x20 && b < 0x7f {
+				c.mu.Lock()
+				c.inLine = append(c.inLine, b)
+				c.raw(string(b)) // echo
+				c.mu.Unlock()
+			}
+		}
 	}
 }
 
@@ -228,7 +291,8 @@ func handle(world *cowboy.World, ev event) {
 			ev.reply <- connectResult{needCreate: true}
 			return
 		}
-		p := world.Connect(ev.name, ev.c.out)
+		p := world.Connect(ev.name, ev.c.emit)
+		world.SetPrompter(p, ev.c.setPrompt)
 		ev.c.player = p
 		world.Prompt(p)
 		ev.reply <- connectResult{}
@@ -238,7 +302,8 @@ func handle(world *cowboy.World, ev event) {
 			ev.reply <- connectResult{rejected: true}
 			return
 		}
-		p := world.CreateCharacter(ev.name, ev.spec, ev.c.out)
+		p := world.CreateCharacter(ev.name, ev.spec, ev.c.emit)
+		world.SetPrompter(p, ev.c.setPrompt)
 		ev.c.player = p
 		world.Prompt(p)
 		ev.reply <- connectResult{}

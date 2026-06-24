@@ -115,8 +115,13 @@ func (w *World) sendPrompt(p *Player) {
 		mode = "NET"
 		ram = style(neon, " ["+itoa(p.RAM)+"/"+itoa(maxRAM(p))+"ram]")
 	}
-	p.send(style(hpColor, "["+itoa(p.HP)+"/"+itoa(p.MaxHP)+"hp]") + ram +
-		style(dim, " ["+mode+"] ") + style(green, "> "))
+	promptStr := style(hpColor, "["+itoa(p.HP)+"/"+itoa(p.MaxHP)+"hp]") + ram +
+		style(dim, " ["+mode+"] ") + style(green, "> ")
+	if p.prompter != nil {
+		p.prompter(promptStr) // managed-prompt sink (redraws around async output)
+	} else {
+		p.send(promptStr)
+	}
 	p.dirty = false // prompt now shown; nothing owed until the next output
 }
 
