@@ -60,6 +60,7 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sys
 		w.Line("  [B] IP banlist")
 		openReports, _ := st.Reports().OpenCount()
 		w.Printf("  [R] Abuse reports (%d open)\r\n", openReports)
+		w.Line("  [S] Branding & MOTD")
 		w.Line("  [Q] Back to main menu")
 		w.Color(screen.Green)
 		w.Print("\r\nChoice: ")
@@ -91,6 +92,10 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sys
 			}
 		case 'r':
 			if err := reportsQueue(s, st, u); err != nil {
+				return err
+			}
+		case 's':
+			if err := editSettings(s, st); err != nil {
 				return err
 			}
 		case 'q':
@@ -454,6 +459,67 @@ func banManagement(s *session.Session, st *store.Store, sysop *store.User) error
 			w.ColorLine(screen.Cyan, "  [ok] ban lifted")
 			s.Activity("ip-unban", active[n-1].Pattern)
 		}
+	default:
+		return nil
+	}
+	w.Print("\r\nPress any key...")
+	_, e := s.ReadKey()
+	return e
+}
+
+// editSettings lets a SysOp customize the BBS name, tagline, and message of the
+// day (shown to callers before the menu).
+func editSettings(s *session.Session, st *store.Store) error {
+	set := st.Settings()
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	w.Clear()
+	w.ColorLine(screen.Magenta, "Branding & MOTD")
+	w.ColorLine(screen.Magenta, "---------------")
+	w.Printf("  Name:    %s\r\n", set.BBSName())
+	w.Printf("  Tagline: %s\r\n", set.Tagline())
+	motd := set.MOTD()
+	if motd == "" {
+		motd = "(none)"
+	}
+	w.Print("  MOTD:    ")
+	w.SafePrint(firstLine(motd))
+	w.Print("\r\n")
+	w.Color(screen.Green)
+	w.Print("\r\nEdit [N]ame  [T]agline  [M]OTD  [Q]uit: ")
+	w.Reset()
+	k, err := s.ReadKey()
+	if err != nil {
+		return err
+	}
+	switch toLower(k) {
+	case 'n':
+		if v := prompt(s, w, "New BBS name (blank to cancel): "); v != "" {
+			st.Settings().Set("bbs_name", v)
+			w.ColorLine(screen.Cyan, "Updated.")
+		}
+	case 't':
+		if v := prompt(s, w, "New tagline (blank to cancel): "); v != "" {
+			st.Settings().Set("tagline", v)
+			w.ColorLine(screen.Cyan, "Updated.")
+		}
+	case 'm':
+		w.Color(screen.Green)
+		w.Print("\r\nEnter the MOTD. End with a single '.' on its own line; a lone '.' clears it.\r\n")
+		w.Reset()
+		var lines []string
+		for {
+			line, err := s.ReadLine()
+			if err != nil {
+				return err
+			}
+			if line == "." {
+				break
+			}
+			lines = append(lines, line)
+		}
+		st.Settings().Set("motd", strings.Join(lines, "\n"))
+		w.ColorLine(screen.Cyan, "MOTD updated.")
 	default:
 		return nil
 	}

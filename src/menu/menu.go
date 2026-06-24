@@ -31,9 +31,37 @@ type Item struct {
 
 // Menu is a titled (optionally art-backed) list of items.
 type Menu struct {
-	Title   string
-	ArtPath string // optional CP437 .ans banner
-	Items   []Item
+	Title    string
+	Subtitle string // optional line under the title (e.g. the BBS tagline)
+	ArtPath  string // optional CP437 .ans banner
+	Items    []Item
+}
+
+// ShowMOTD displays the message of the day and waits for the caller to press
+// SPACE to confirm they've read it (they can re-read it from the main menu if
+// they blew past it).
+func ShowMOTD(s *session.Session, motd string) error {
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	w.Clear()
+	w.ColorLine(screen.Cyan, "* Message of the Day *")
+	w.ColorLine(screen.Cyan, "----------------------")
+	for _, line := range strings.Split(motd, "\n") {
+		w.SafePrint(strings.TrimRight(line, "\r"))
+		w.Print("\r\n")
+	}
+	w.Color(screen.Green)
+	w.Print("\r\nPress [SPACE] to continue...")
+	w.Reset()
+	for {
+		k, err := s.ReadKey()
+		if err != nil {
+			return err
+		}
+		if k == ' ' {
+			return nil
+		}
+	}
 }
 
 // ErrDisconnected is returned when the caller drops mid-menu.
@@ -86,6 +114,10 @@ func (m *Menu) render(s *session.Session) {
 
 	w.ColorLine(screen.Cyan, m.Title)
 	w.ColorLine(screen.Cyan, strings.Repeat("-", len(m.Title)))
+	if m.Subtitle != "" {
+		w.ColorLine(screen.Blue, m.Subtitle)
+		w.Print("\r\n")
+	}
 	for _, it := range m.Items {
 		w.Color(screen.Yellow)
 		w.Printf("  [%c] ", upper(it.Key))
