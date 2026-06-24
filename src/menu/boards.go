@@ -71,6 +71,7 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 				return err
 			}
 		}
+		msgs = hideBlocked(st, u.ID, msgs)
 
 		w.Clear()
 		w.Color(screen.Cyan)
@@ -172,6 +173,7 @@ func readMessage(s *session.Session, st *store.Store, u *store.User, m *store.Me
 	if err != nil {
 		return err
 	}
+	replies = hideBlocked(st, u.ID, replies)
 	for _, rep := range replies {
 		w.Color(screen.Blue)
 		w.Printf("\r\n  ┌ reply from %s, %s\r\n", handles.handle(rep.AuthorID), rep.PostedAt.Format("2006-01-02"))
@@ -182,16 +184,45 @@ func readMessage(s *session.Session, st *store.Store, u *store.User, m *store.Me
 	}
 
 	w.Color(screen.Green)
-	w.Print("\r\n[R]eply  [Q]uit: ")
+	w.Print("\r\n[R]eply  [B]lock author  re[P]ort  [Q]uit: ")
 	w.Reset()
 	key, err := s.ReadKey()
 	if err != nil {
 		return err
 	}
-	if toLower(key) == 'r' {
+	switch toLower(key) {
+	case 'r':
 		return compose(s, st, u, m.AreaID, &m.ID)
+	case 'b':
+		if m.AuthorID == u.ID {
+			break
+		}
+		if err := st.Blocks().Block(u.ID, m.AuthorID); err != nil {
+			w.ColorLine(screen.Red, "could not block")
+		} else {
+			s.Activity("block-user", handles.handle(m.AuthorID))
+			w.ColorLine(screen.Cyan, "\r\nBlocked. Their posts are now hidden from you.")
+			_, _ = s.ReadKey()
+		}
+	case 'p':
+		reportUser(s, st, u, m.AuthorID, fmt.Sprintf("board post #%d", m.ID), handles)
 	}
 	return nil
+}
+
+// hideBlocked drops posts authored by users the viewer has blocked.
+func hideBlocked(st *store.Store, viewerID int64, msgs []*store.Message) []*store.Message {
+	blocked, err := st.Blocks().BlockedSet(viewerID)
+	if err != nil || len(blocked) == 0 {
+		return msgs
+	}
+	kept := msgs[:0]
+	for _, m := range msgs {
+		if !blocked[m.AuthorID] {
+			kept = append(kept, m)
+		}
+	}
+	return kept
 }
 
 func compose(s *session.Session, st *store.Store, u *store.User, areaID int64, parentID *int64) error {

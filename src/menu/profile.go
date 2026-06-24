@@ -31,7 +31,7 @@ func RunProfile(s *session.Session, st *store.Store, u *store.User) error {
 			w.Printf("  %d) %s  %s\r\n", i+1, k.Fingerprint, k.Comment)
 		}
 		w.Color(screen.Green)
-		w.Print("\r\n[A]dd key  [R]evoke key  [P]assword  [Q]uit: ")
+		w.Print("\r\n[A]dd key  [R]evoke key  [P]assword  [B]locked users  [Q]uit: ")
 		w.Reset()
 
 		key, err := s.ReadKey()
@@ -41,6 +41,10 @@ func RunProfile(s *session.Session, st *store.Store, u *store.User) error {
 		switch toLower(key) {
 		case 'p':
 			if err := changePassword(s, st, u, w); err != nil {
+				return err
+			}
+		case 'b':
+			if err := manageBlocks(s, st, u); err != nil {
 				return err
 			}
 		case 'a':
@@ -78,6 +82,81 @@ func RunProfile(s *session.Session, st *store.Store, u *store.User) error {
 			} else {
 				w.ColorLine(screen.Cyan, "  [ok] key revoked")
 				s.Activity("key-revoke", active[n-1].Fingerprint)
+			}
+		case 'q':
+			return nil
+		}
+	}
+}
+
+// manageBlocks lets a member view their block list, block a user by handle, and
+// unblock. Blocking can also be done contextually from mail/board read views.
+func manageBlocks(s *session.Session, st *store.Store, u *store.User) error {
+	for {
+		cap := s.Cap()
+		w := screen.New(s, cap.ANSI, cap.Cols)
+		w.Clear()
+		w.ColorLine(screen.Cyan, "Blocked Users")
+		w.ColorLine(screen.Cyan, "-------------")
+		ids, err := st.Blocks().List(u.ID)
+		if err != nil {
+			return err
+		}
+		if len(ids) == 0 {
+			w.Line("  (you haven't blocked anyone)")
+		}
+		handles := make([]string, len(ids))
+		for i, id := range ids {
+			h := "unknown"
+			if bu, err := st.Users().ByID(id); err == nil {
+				h = bu.Handle
+			}
+			handles[i] = h
+			w.Printf("  %d) %s\r\n", i+1, h)
+		}
+		w.Color(screen.Green)
+		w.Print("\r\n[A]dd by handle  [U]nblock #  [Q]uit: ")
+		w.Reset()
+		key, err := s.ReadKey()
+		if err != nil {
+			return err
+		}
+		switch toLower(key) {
+		case 'a':
+			w.Print("\r\nHandle to block: ")
+			in, err := s.ReadLine()
+			if err != nil {
+				return err
+			}
+			target, terr := st.Users().ByHandle(strings.TrimSpace(in))
+			if terr != nil {
+				w.ColorLine(screen.Red, "  [x] no such user")
+			} else if target.ID == u.ID {
+				w.ColorLine(screen.Red, "  [x] you can't block yourself")
+			} else if err := st.Blocks().Block(u.ID, target.ID); err != nil {
+				w.ColorLine(screen.Red, "  [x] could not block")
+			} else {
+				s.Activity("block-user", target.Handle)
+				w.ColorLine(screen.Cyan, "  [ok] blocked")
+			}
+		case 'u':
+			if len(ids) == 0 {
+				continue
+			}
+			w.Print("\r\nNumber to unblock (or blank to cancel): ")
+			in, err := s.ReadLine()
+			if err != nil {
+				return err
+			}
+			n, perr := strconv.Atoi(strings.TrimSpace(in))
+			if perr != nil || n < 1 || n > len(ids) {
+				continue
+			}
+			if err := st.Blocks().Unblock(u.ID, ids[n-1]); err != nil {
+				w.ColorLine(screen.Red, "  [x] could not unblock")
+			} else {
+				s.Activity("unblock-user", handles[n-1])
+				w.ColorLine(screen.Cyan, "  [ok] unblocked")
 			}
 		case 'q':
 			return nil
