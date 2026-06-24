@@ -16,7 +16,7 @@ func Member(st *store.Store, u *store.User, artPath string) *Menu {
 			{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u)},
 			{Key: 'E', Label: "Private Mail", Action: mailAction(st, u)},
 			{Key: 'F', Label: "File Library", Action: filesAction(st, u)},
-			{Key: 'D', Label: "Door Games       (coming in Sprint 007)", Action: placeholder("door-games", "Door Games")},
+			{Key: 'D', Label: "Door Games", Action: doorsAction(st, u)},
 			{Key: 'K', Label: "My SSH Keys / Profile", Action: profileAction(st, u)},
 			{Key: 'G', Label: "Goodbye / Logoff", Action: logoff},
 		},
@@ -53,6 +53,15 @@ func mailAction(st *store.Store, u *store.User) Action {
 func filesAction(st *store.Store, u *store.User) Action {
 	return func(s *session.Session) (Outcome, error) {
 		if err := RunFiles(s, st, u); err != nil {
+			return Logoff, err
+		}
+		return Continue, nil
+	}
+}
+
+func doorsAction(st *store.Store, u *store.User) Action {
+	return func(s *session.Session) (Outcome, error) {
+		if err := RunDoors(s, st, u); err != nil {
 			return Logoff, err
 		}
 		return Continue, nil
