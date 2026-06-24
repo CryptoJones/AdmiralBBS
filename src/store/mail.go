@@ -114,5 +114,19 @@ func (r *Mail) Get(id, userID int64) (*PrivateMessage, error) {
 	return m, nil
 }
 
+// Delete removes a message from the recipient's mailbox. Only the recipient
+// (to_id) may delete it, so a sender can't reach into someone else's inbox.
+// Returns ErrNotFound if the id isn't the user's received mail.
+func (r *Mail) Delete(id, userID int64) error {
+	res, err := r.st.db.Exec(`DELETE FROM private_message WHERE id = ? AND to_id = ?`, id, userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // Mail returns the private-message repository.
 func (s *Store) Mail() *Mail { return &Mail{st: s} }

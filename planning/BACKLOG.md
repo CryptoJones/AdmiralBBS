@@ -37,8 +37,11 @@ All three landed on `main`. The moderation gap CJ surfaced is closed.
   threads, and file browse. `[>]`/`[<]` paging keys (chosen to avoid colliding
   with [P]ost/[B]lock). Unit-tested math + an e2e test that drives the real mail
   menu across two pages.
-- [ ] **Message / mail edit + delete** — authors can edit or delete their own
-  posts/messages (SysOp can delete any).
+- [x] **Message / mail edit + delete** — DONE (S018, `main`).
+  `Messages.Edit` (owner-only, `ErrNotOwner`) + `Messages.Delete` (post and its
+  replies); `Mail.Delete` (recipient-only). Board read view offers [E]dit/[D]elete
+  to the author and [D]elete to SysOp; mail read view offers [D]elete. Tested:
+  ownership enforcement, cascade delete, and recipient-only mail delete.
 - [ ] **"New since last visit" read pointers** — per-user last-read markers so
   the boards show what's unread.
 - [ ] **Who's-online** — list currently-connected nodes/users.

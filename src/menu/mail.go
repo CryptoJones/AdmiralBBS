@@ -104,7 +104,7 @@ func readMail(s *session.Session, st *store.Store, u *store.User, id int64, hand
 	w.SafePrint(m.Body)
 	w.Print("\r\n")
 	w.Color(screen.Green)
-	w.Print("\r\n[R]eply  [B]lock sender  re[P]ort  [Q]uit: ")
+	w.Print("\r\n[R]eply  [D]elete  [B]lock sender  re[P]ort  [Q]uit: ")
 	w.Reset()
 	key, err := s.ReadKey()
 	if err != nil {
@@ -113,6 +113,14 @@ func readMail(s *session.Session, st *store.Store, u *store.User, id int64, hand
 	switch toLower(key) {
 	case 'r':
 		return sendMail(s, st, u, m.FromID, "re: "+m.Subject)
+	case 'd':
+		if err := st.Mail().Delete(m.ID, u.ID); err != nil {
+			w.ColorLine(screen.Red, "could not delete")
+		} else {
+			s.Activity("delete-mail", "")
+			w.ColorLine(screen.Cyan, "\r\nDeleted.")
+			_, _ = s.ReadKey()
+		}
 	case 'b':
 		if err := st.Blocks().Block(u.ID, m.FromID); err != nil {
 			w.ColorLine(screen.Red, "could not block")
