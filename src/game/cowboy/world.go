@@ -174,6 +174,7 @@ func (w *World) Disconnect(p *Player) {
 			other.send(style(dim, p.Name+" jacked out — your duel ends.") + crlf)
 		}
 	}
+	w.dropFromParty(p)
 	w.broadcast(p.RoomID, p, style(dim, p.Name+" flatlines from the grid.")+crlf)
 	delete(w.players, p.ID)
 	delete(w.byName, strings.ToLower(p.Name))
