@@ -1,6 +1,17 @@
 # STATE — current moment
 
-_Last updated: 2026-06-23_
+_Last updated: 2026-06-24_
+
+> **What's left lives in [`planning/BACKLOG.md`](BACKLOG.md)** — the single
+> source of truth for unbuilt work (P1 moderation/abuse, P2/P3 polish).
+
+**S013 (file-library hardening + CI green)** — landed on `main @ e9d0dfd`.
+Atomic per-user upload quota (closes the TOCTOU race), duplicate-filename
+rejection, file-area search/sort/filter/delete, XMODEM upload byte-cap, and
+self-service password change. **CI is GREEN for the first time** (build / vet /
+test / govulncheck on the Linux runner) — it had been red since S009 over a
+non-portable path-traversal test assertion, now fixed. Remaining work is
+catalogued in BACKLOG.md.
 
 ## Active sprint
 
