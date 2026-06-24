@@ -187,3 +187,46 @@ func TestCowboyInventoryShowsCredits(t *testing.T) {
 		t.Fatalf("inventory did not show credits; got:\n%s", b.String())
 	}
 }
+
+// Using a single-use heal item at full HP must NOT consume it (no silent waste).
+func TestCowboyUseStimpakAtFullHPDoesNotWaste(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	out, b := sink()
+	p := w.Connect("Case", out) // starts with 1 stimpak, full HP
+	p.HP = p.MaxHP
+	b.Reset()
+	w.Command(p, "use stimpak")
+	if p.Inv["stimpak"] != 1 {
+		t.Fatalf("stimpak wasted at full HP; remaining=%d, want 1", p.Inv["stimpak"])
+	}
+	if !strings.Contains(b.String(), "already full") {
+		t.Fatalf("expected full-HP refusal; got:\n%s", b.String())
+	}
+}
+
+// A hurt player CAN use the stimpak: it heals and is consumed.
+func TestCowboyUseStimpakWhenHurtHeals(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	out, _ := sink()
+	p := w.Connect("Case", out)
+	p.HP = 1
+	w.Command(p, "use stimpak")
+	if p.Inv["stimpak"] != 0 {
+		t.Fatalf("stimpak not consumed when hurt; remaining=%d", p.Inv["stimpak"])
+	}
+	if p.HP <= 1 {
+		t.Fatalf("stimpak did not heal; HP=%d", p.HP)
+	}
+}
+
+// `use` with no argument asks what, instead of "You don't have a ."
+func TestCowboyUseEmptyArg(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	out, b := sink()
+	p := w.Connect("Case", out)
+	b.Reset()
+	w.Command(p, "use")
+	if !strings.Contains(b.String(), "Use what?") {
+		t.Fatalf("expected 'Use what?'; got:\n%s", b.String())
+	}
+}
