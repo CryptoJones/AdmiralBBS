@@ -45,7 +45,7 @@ func TestFullMemberJourney(t *testing.T) {
 
 	// 1) Telnet apply.
 	run("", true, "alice\n"+key+"\n\nalice@pgp.example\njust joining\n", func(sess *session.Session) {
-		if err := menu.RunApply(sess, s.Users(), s.Memberships(), s.Keys()); err != nil {
+		if err := menu.RunApply(sess, s); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
 	})

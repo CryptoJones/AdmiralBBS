@@ -2,6 +2,7 @@ package menu
 
 import (
 	"admiralbbs/src/doors"
+	"admiralbbs/src/screen"
 	"admiralbbs/src/session"
 	"admiralbbs/src/store"
 )
@@ -24,13 +25,24 @@ func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts 
 	if u.AccessLevel >= CoSysOpLevel {
 		items = append(items, Item{Key: 'X', Label: "SysOp Control Panel", Action: sysopAction(st, u, auditPath, sysopPass)})
 	}
-	items = append(items, Item{Key: 'G', Label: "Goodbye / Logoff", Action: logoff})
+	items = append(items, Item{Key: 'G', Label: "Goodbye / Logoff", Action: logoffAction(st)})
 	name, tagline := st.Settings().BBSName(), st.Settings().Tagline()
 	return &Menu{
 		Title:   name + " :: Main Menu",
 		Banner:  BBSBanner(name, tagline), // shown unless a custom -art is supplied
 		ArtPath: artPath,
 		Items:   items,
+	}
+}
+
+// logoffAction says goodbye using the configured BBS name, then disconnects.
+func logoffAction(st *store.Store) Action {
+	return func(s *session.Session) (Outcome, error) {
+		s.Activity("logoff", "chose Goodbye")
+		cap := s.Cap()
+		w := screen.New(s, cap.ANSI, cap.Cols)
+		w.ColorLine(screen.Cyan, "Thanks for calling "+st.Settings().BBSName()+". NO CARRIER")
+		return Logoff, nil
 	}
 }
 

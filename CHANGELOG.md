@@ -13,6 +13,14 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.3] - 2026-06-24
+
+### Fixed
+- Two more hardcoded "AdmiralBBS" strings now use the **configured BBS name**:
+  the logoff message ("Thanks for calling <name>. NO CARRIER") and the Telnet
+  membership-application screen title. Branding is now consistent everywhere a
+  caller sees it. (`RunApply` now takes the store so it can read settings.)
+
 ## [1.0.2] - 2026-06-24
 
 ### Changed
@@ -79,7 +87,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.3
 [1.0.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.2
 [1.0.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.0
