@@ -116,6 +116,24 @@ func (s *Session) WatchBudget(d time.Duration) {
 // Write sends bytes to the caller (Session is an io.Writer).
 func (s *Session) Write(p []byte) (int, error) { return s.conn.Write(p) }
 
+// Raw returns a raw byte-level ReadWriter over the connection, for subsystems
+// that drive their own I/O (e.g. door games piping to a subprocess). Reads come
+// through the session's buffered reader (so no buffered input is lost) and reset
+// the idle watchdog; writes go straight to the wire with no sanitisation.
+func (s *Session) Raw() io.ReadWriter { return rawIO{s} }
+
+type rawIO struct{ s *Session }
+
+func (x rawIO) Read(p []byte) (int, error) {
+	n, err := x.s.r.Read(p)
+	if n > 0 {
+		x.s.resetIdle()
+	}
+	return n, err
+}
+
+func (x rawIO) Write(p []byte) (int, error) { return x.s.conn.Write(p) }
+
 // Activity records a caller action in the audit trail.
 func (s *Session) Activity(action, detail string) {
 	s.log.Emit(audit.Event{
