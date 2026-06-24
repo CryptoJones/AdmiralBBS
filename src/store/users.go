@@ -126,6 +126,30 @@ func (r *Users) Approve(id int64, accessLevel int) error {
 	return r.SetStatus(id, StatusApproved, accessLevel)
 }
 
+// SetDailyMinutes sets a user's daily time budget (SysOp).
+func (r *Users) SetDailyMinutes(id int64, minutes int) error {
+	_, err := r.st.db.Exec(`UPDATE user SET daily_minutes = ? WHERE id = ?`, minutes, id)
+	return err
+}
+
+// All lists every user, oldest first (SysOp user management).
+func (r *Users) All() ([]*User, error) {
+	rows, err := r.st.db.Query(`SELECT ` + userCols + ` FROM user ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*User
+	for rows.Next() {
+		u, err := r.scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
 // TouchLogin records the user's most recent login time.
 func (r *Users) TouchLogin(id int64, when time.Time) error {
 	_, err := r.st.db.Exec(`UPDATE user SET last_login_at = ? WHERE id = ?`,

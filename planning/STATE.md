@@ -9,8 +9,11 @@ Landed on `main`: S002 spine, encrypted data layer, S003 2FA auth, S004
 message boards, S005 private mail, S006 file library, **S007 door games**
 (sandboxed-subprocess launcher: scrubbed env so the master key never leaks
 into a door, jail dir, CPU rlimit, wall-clock timeout + process-group kill,
-door32.sys dropfile, bundled demo door — SEC-1). Next: S008 SysOp control
-panel → S009 hardening/deploy.
+door32.sys dropfile, bundled demo door — SEC-1), **S008 SysOp control panel**
+(membership approval + token issuance, user management, content management,
+audit viewer + chain verification; access ≥80, server-side gated). All four
+founding features + the operator console are done. Last: S009 hardening/deploy
+(container hardening, govulncheck/CI, key-rotation runbook).
 
 ## (earlier) Active sprint
 
