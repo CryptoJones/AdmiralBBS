@@ -13,6 +13,14 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.6] - 2026-06-24
+
+### Fixed
+- **Branding/MOTD edits take effect immediately, without a relog.** The main
+  menu was built once at login, snapshotting the BBS name/tagline/banner and the
+  MOTD item; it now carries a `Refresh` hook that re-reads settings on every
+  render, so a SysOp's marketing changes show on the next screen draw.
+
 ## [1.0.5] - 2026-06-24
 
 ### Fixed
@@ -108,7 +116,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.6
 [1.0.5]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.5
 [1.0.4]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.4
 [1.0.3]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.3

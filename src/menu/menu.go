@@ -36,6 +36,9 @@ type Menu struct {
 	Banner   []string // optional generated banner lines (shown when ArtPath is unset)
 	ArtPath  string   // optional CP437 .ans banner (a SysOp's custom art; overrides Banner)
 	Items    []Item
+	// Refresh, if set, runs before each render to recompute dynamic fields
+	// (title/banner/items) — so live config changes show without a relog.
+	Refresh func()
 }
 
 // BBSBanner builds a simple, brand-neutral ASCII banner from the configured BBS
@@ -148,6 +151,9 @@ func (m *Menu) find(key byte) *Item {
 }
 
 func (m *Menu) render(s *session.Session) {
+	if m.Refresh != nil {
+		m.Refresh() // pull live config (branding, items) before drawing
+	}
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
 	w.Clear()
