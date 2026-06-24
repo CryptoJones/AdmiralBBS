@@ -55,6 +55,7 @@ func RunFiles(s *session.Session, st *store.Store, u *store.User) error {
 
 func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *store.FileArea, handles *handleCache) error {
 	sortBy := "newest"
+	page := 0
 	var listed []*store.FileEntry // non-nil => active search/filter result
 	var header string
 	for {
@@ -69,6 +70,8 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 				return err
 			}
 		}
+		lo, hi, pages := pageWindow(len(files), page)
+		page = clampPage(page, pages)
 
 		w.Clear()
 		w.Color(screen.Cyan)
@@ -82,7 +85,8 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 		if len(files) == 0 {
 			w.Line("  (no files)")
 		}
-		for i, f := range files {
+		for i := lo; i < hi; i++ {
+			f := files[i]
 			w.Color(screen.Yellow)
 			w.Printf("  %d) ", i+1)
 			w.Color(screen.White)
@@ -92,6 +96,7 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 			w.SafePrint(firstLine(f.Description))
 			w.Print("\r\n")
 		}
+		pageFooter(w, page, pages)
 		w.Color(screen.Green)
 		w.Print("\r\n[#] download  [U]pload  [S]earch  [B] by user  [R] sort  [K] delete  [C]lear  [Q]uit: ")
 		w.Reset()
@@ -103,16 +108,20 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 		switch {
 		case in == "" || strings.EqualFold(in, "q"):
 			return nil
+		case in == ">":
+			page++
+		case in == "<":
+			page--
 		case strings.EqualFold(in, "u"):
-			listed, header = nil, ""
+			listed, header, page = nil, "", 0
 			if err := uploadFile(s, st, u, area.ID); err != nil {
 				return err
 			}
 		case strings.EqualFold(in, "c"):
-			listed, header = nil, ""
+			listed, header, page = nil, "", 0
 		case strings.EqualFold(in, "r"):
 			sortBy = nextFileSort(sortBy)
-			listed, header = nil, ""
+			listed, header, page = nil, "", 0
 		case strings.EqualFold(in, "s"):
 			w.Color(screen.Green)
 			w.Print("\r\nSearch text: ")
@@ -123,7 +132,7 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 				if serr != nil {
 					return serr
 				}
-				listed, header = res, fmt.Sprintf("search %q — %d hit(s)", q, len(res))
+				listed, header, page = res, fmt.Sprintf("search %q — %d hit(s)", q, len(res)), 0
 			}
 		case strings.EqualFold(in, "b"):
 			w.Color(screen.Green)
@@ -135,7 +144,7 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 				if ferr != nil {
 					return ferr
 				}
-				listed, header = res, fmt.Sprintf("by %s — %d file(s)", target.Handle, len(res))
+				listed, header, page = res, fmt.Sprintf("by %s — %d file(s)", target.Handle, len(res)), 0
 			} else {
 				w.ColorLine(screen.Red, "no such user")
 			}
@@ -151,7 +160,7 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 						w.ColorLine(screen.Red, "delete failed")
 					} else {
 						s.Activity("delete-file", f.Filename)
-						listed, header = nil, ""
+						listed, header, page = nil, "", 0
 					}
 				} else {
 					w.ColorLine(screen.Red, "you can only delete your own files")

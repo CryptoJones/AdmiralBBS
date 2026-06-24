@@ -32,8 +32,11 @@ All three landed on `main`. The moderation gap CJ surfaced is closed.
 
 ## P2 — Quality-of-life polish (flagged but not blocking)
 
-- [ ] **Pagination** — boards, file lists, and mail currently dump full lists;
-  add paging for large areas.
+- [x] **Pagination** — DONE (S017, `main`). Shared `menu` pager (pageWindow /
+  clampPage / pageFooter, 15 rows/page) wired into the mail inbox, board
+  threads, and file browse. `[>]`/`[<]` paging keys (chosen to avoid colliding
+  with [P]ost/[B]lock). Unit-tested math + an e2e test that drives the real mail
+  menu across two pages.
 - [ ] **Message / mail edit + delete** — authors can edit or delete their own
   posts/messages (SysOp can delete any).
 - [ ] **"New since last visit" read pointers** — per-user last-read markers so
