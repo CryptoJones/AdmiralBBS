@@ -4,7 +4,17 @@ _Last updated: 2026-06-23_
 
 ## Active sprint
 
-**Autonomous loop: "implement all the bbs features"** (started 2026-06-23).
+**COMPLETE (2026-06-23).** All sprints landed on `main`: S002 spine, encrypted
+data layer, S003 2FA auth, S004 boards, S005 mail, S006 files, S007 sandboxed
+doors, S008 SysOp control panel, S009 hardening/deploy (CI + govulncheck clean +
+hardened container + ops/key-rotation runbook). All four founding features, the
+operator console, encryption in transit + at rest, and the SEC-1…13 register are
+realised. Future polish noted in S009 (uid/container door isolation, scripts/rekey,
+upload quotas, Zmodem). Original active-sprint history below.
+
+## Autonomous loop history
+
+**"implement all the bbs features"** (started 2026-06-23).
 Landed on `main`: S002 spine, encrypted data layer, S003 2FA auth, S004
 message boards, S005 private mail, S006 file library, **S007 door games**
 (sandboxed-subprocess launcher: scrubbed env so the master key never leaks
