@@ -2,12 +2,17 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 )
+
+// ErrKeyTaken means the offered public key is already registered (active) to an
+// account. One account per key fingerprint — the anti-sockpuppet control.
+var ErrKeyTaken = errors.New("store: that SSH key is already registered to an account")
 
 // Key is one registered SSH public key for a user. Public keys are not secret,
 // so they are stored in normalised authorized_keys form (cleartext); the
@@ -46,6 +51,13 @@ func (r *Keys) Add(userID int64, authorizedKey string) (*Key, error) {
 		 VALUES (?, ?, ?, ?, ?)`,
 		userID, normalised, fp, comment, fmtTime(now))
 	if err != nil {
+		// The partial unique index on active fingerprints (migration 004) is the
+		// race-safe enforcement of one-account-per-key; map its violation to a
+		// clear sentinel for callers (apply flow, profile add).
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") &&
+			strings.Contains(err.Error(), "fingerprint") {
+			return nil, ErrKeyTaken
+		}
 		return nil, err
 	}
 	id, err := res.LastInsertId()
@@ -75,6 +87,19 @@ func (r *Keys) scan(row interface{ Scan(...any) error }) (*Key, error) {
 func (r *Keys) byID(id int64) (*Key, error) {
 	row := r.st.db.QueryRow(`SELECT `+keyCols+` FROM user_key WHERE id = ?`, id)
 	return r.scan(row)
+}
+
+// ByFingerprint returns the active key with the given SHA256 fingerprint, or
+// (nil, nil) if no account currently holds it. Because a fingerprint is unique
+// among active keys (migration 004), this resolves a key to its single owner.
+func (r *Keys) ByFingerprint(fp string) (*Key, error) {
+	row := r.st.db.QueryRow(
+		`SELECT `+keyCols+` FROM user_key WHERE fingerprint = ? AND revoked_at IS NULL`, fp)
+	k, err := r.scan(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return k, err
 }
 
 // Active returns the user's non-revoked keys.

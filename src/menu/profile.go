@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -49,7 +50,11 @@ func RunProfile(s *session.Session, st *store.Store, u *store.User) error {
 				return err
 			}
 			if _, err := keys.Add(u.ID, strings.TrimSpace(line)); err != nil {
-				w.ColorLine(screen.Red, "  [x] invalid SSH public key")
+				if errors.Is(err, store.ErrKeyTaken) {
+					w.ColorLine(screen.Red, "  [x] that key is already registered to an account")
+				} else {
+					w.ColorLine(screen.Red, "  [x] invalid SSH public key")
+				}
 			} else {
 				w.ColorLine(screen.Cyan, "  [ok] key added")
 				s.Activity("key-add", "")
