@@ -13,6 +13,13 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.9] - 2026-06-24
+
+### Fixed
+- **Console Cowboy: `inventory` now shows your credits.** Eddies (€$) only
+  appeared on the `score` sheet; they now head your inventory listing too, where
+  players expect to see their money.
+
 ## [1.0.8] - 2026-06-24
 
 ### Fixed
@@ -135,7 +142,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.8...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.9
 [1.0.8]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.8
 [1.0.7]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.7
 [1.0.6]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.6
