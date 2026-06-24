@@ -56,9 +56,12 @@ All three landed on `main`. The moderation gap CJ surfaced is closed.
 
 ## P3 — Visibility / nice-to-have
 
-- [ ] **Impossible-travel anomaly flagging** — surface (do NOT block) logins
-  that hop implausibly fast between distant geos, for SysOp awareness. By design
-  IP/VPN roaming is allowed, so this is a flag, never an auto-deny.
+- [x] **Impossible-travel anomaly flagging** — DONE (S021, `main`). Honest
+  scope: no GeoIP DB and no external calls, so this is rapid-IP-change
+  detection, not true geo-distance. `user.last_login_ip` + `login_anomaly`
+  table (migration 008); `Users.RecordLogin` flags a login from a different IP
+  within 15 min of the last (`store.Anomalies` repo for retrieval). SysOp audit
+  viewer shows recent flags. Never blocks — visibility only. Tested.
 
 ## Decided NON-goals (do not build)
 

@@ -157,6 +157,43 @@ func (r *Users) TouchLogin(id int64, when time.Time) error {
 	return err
 }
 
+// RapidLoginWindow is how soon a login from a different IP counts as a
+// rapid-IP-change ("impossible travel") anomaly worth flagging for the SysOp.
+const RapidLoginWindow = 15 * time.Minute
+
+// RecordLogin updates the user's last-login time and IP, and — if the previous
+// login was from a DIFFERENT IP within RapidLoginWindow — records an anomaly for
+// SysOp visibility. Returns true if an anomaly was flagged. This never blocks
+// the login; roaming/VPN users legitimately change IPs.
+func (r *Users) RecordLogin(id int64, ip string, when time.Time) (bool, error) {
+	when = when.UTC()
+	var prevIP string
+	var prevAtStr sql.NullString
+	err := r.st.db.QueryRow(`SELECT last_login_ip, last_login_at FROM user WHERE id = ?`, id).
+		Scan(&prevIP, &prevAtStr)
+	if err != nil {
+		return false, err
+	}
+
+	flagged := false
+	if prevIP != "" && ip != "" && prevIP != ip && prevAtStr.Valid {
+		gap := when.Sub(parseTime(prevAtStr.String))
+		if gap >= 0 && gap < RapidLoginWindow {
+			if _, err := r.st.db.Exec(
+				`INSERT INTO login_anomaly (user_id, prev_ip, new_ip, gap_seconds, at)
+				 VALUES (?, ?, ?, ?, ?)`,
+				id, prevIP, ip, int64(gap.Seconds()), fmtTime(when)); err != nil {
+				return false, err
+			}
+			flagged = true
+		}
+	}
+
+	_, err = r.st.db.Exec(`UPDATE user SET last_login_at = ?, last_login_ip = ? WHERE id = ?`,
+		fmtTime(when), ip, id)
+	return flagged, err
+}
+
 // ListByStatus returns users in a given status, oldest first.
 func (r *Users) ListByStatus(status string) ([]*User, error) {
 	rows, err := r.st.db.Query(`SELECT `+userCols+` FROM user WHERE status = ? ORDER BY id`, status)
