@@ -31,7 +31,7 @@ const sysopLevel = 100
 
 // version is the released BBS version (SemVer). Bump the PATCH on each merge;
 // MINOR for backward-compatible features, MAJOR for breaking changes.
-const version = "1.0.0"
+const version = "1.0.1"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -201,6 +201,14 @@ func main() {
 		defer roster.Leave(node)
 
 		enforceBudget(s, db, u, *dailyMinutes)
+
+		// Message of the day: shown once before the menu; caller must press SPACE.
+		if motd := db.Settings().MOTD(); motd != "" {
+			if err := menu.ShowMOTD(s, motd); err != nil {
+				return
+			}
+		}
+
 		doorOpts := doors.Opts{RunAsUID: *doorUID, RunAsGID: *doorGID, Chroot: *doorChroot, NoNetwork: *doorNoNet, Isolate: *doorIsolate}
 		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts, node, doorsData, roster, sysopPanelPass).Run(s)
 	}

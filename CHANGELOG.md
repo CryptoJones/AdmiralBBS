@@ -13,6 +13,18 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.1] - 2026-06-24
+
+### Added
+- **SysOp-customizable branding** — the main menu shows a configurable BBS
+  **name** and **tagline** (defaults to AdmiralBBS / its tagline); edit them in
+  the control panel (`[X]` → `[S] Branding & MOTD`). Settings live in a new
+  `setting` key/value table (migration 010); unset keys fall back to defaults.
+- **Message of the Day** — an optional MOTD shown once after login, **before**
+  the main menu; the caller must press **SPACE** to continue. A `[O] Message of
+  the Day` menu item re-displays it for anyone who blew past it. Edited from the
+  same `[S]` SysOp screen.
+
 ## [1.0.0] - 2026-06-24
 
 First tagged release — the whole build to date, rolled up. A clean-room,
@@ -54,5 +66,6 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.0
