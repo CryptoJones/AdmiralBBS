@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,14 +12,39 @@ import (
 )
 
 // CoSysOpLevel is the minimum access level for the control panel.
-const CoSysOpLevel = 80
+const CoSysOpLevel = store.SysOpLevel
+
+// sysopPassOK constant-time compares the entered panel password to the
+// configured shared secret.
+func sysopPassOK(provided, configured string) bool {
+	return subtle.ConstantTimeCompare([]byte(provided), []byte(configured)) == 1
+}
 
 // RunSysOp is the SysOp Control Panel — SSH-only, access ≥80, server-side gated
-// on every action. Membership approval, user management, content management, and
-// the audit viewer.
-func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath string) error {
+// on every action. If sysopPass is non-empty it is a SHARED step-up secret that
+// must be entered before the panel opens — so an unattended logged-in SysOp
+// session can't be used to change BBS settings by someone who doesn't know it.
+func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sysopPass string) error {
 	if u.AccessLevel < CoSysOpLevel {
 		return nil // defence in depth — the menu shouldn't have offered it
+	}
+	if sysopPass != "" {
+		cap := s.Cap()
+		w := screen.New(s, cap.ANSI, cap.Cols)
+		w.Color(screen.Green)
+		w.Print("\r\nSysOp panel password: ")
+		w.Reset()
+		entered, err := s.ReadPassword()
+		if err != nil {
+			return err
+		}
+		if !sysopPassOK(entered, sysopPass) {
+			s.Activity("sysop-gate-failed", "")
+			w.ColorLine(screen.Red, "Denied.")
+			_, _ = s.ReadKey()
+			return nil
+		}
+		s.Activity("sysop-gate-ok", "")
 	}
 	for {
 		cap := s.Cap()

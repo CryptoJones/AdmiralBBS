@@ -10,9 +10,10 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// ErrKeyTaken means the offered public key is already registered (active) to an
-// account. One account per key fingerprint — the anti-sockpuppet control.
-var ErrKeyTaken = errors.New("store: that SSH key is already registered to an account")
+// ErrKeyTaken means the offered public key is already active on another account
+// in the SAME tier. A key may map to at most one SysOp-tier account and one
+// regular account (anti-sockpuppet, but operator-friendly).
+var ErrKeyTaken = errors.New("store: that SSH key is already registered to another account at this access tier")
 
 // Key is one registered SSH public key for a user. Public keys are not secret,
 // so they are stored in normalised authorized_keys form (cleartext); the
@@ -46,18 +47,43 @@ func (r *Keys) Add(userID int64, authorizedKey string) (*Key, error) {
 	normalised := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(pub)))
 	fp := ssh.FingerprintSHA256(pub)
 	now := time.Now().UTC()
+
+	// One account per TIER per key: a fingerprint may be active on at most one
+	// SysOp-tier account and one regular account. Serialize so the check+insert
+	// is atomic against a concurrent registration of the same key.
+	r.st.keyMu.Lock()
+	defer r.st.keyMu.Unlock()
+
+	var targetLevel int
+	if err := r.st.db.QueryRow(`SELECT access_level FROM user WHERE id = ?`, userID).Scan(&targetLevel); err != nil {
+		return nil, err
+	}
+	targetSysop := targetLevel >= SysOpLevel
+	rows, err := r.st.db.Query(
+		`SELECT u.access_level FROM user_key k JOIN user u ON u.id = k.user_id
+		 WHERE k.fingerprint = ? AND k.revoked_at IS NULL AND k.user_id != ?`, fp, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var lvl int
+		if err := rows.Scan(&lvl); err != nil {
+			return nil, err
+		}
+		if (lvl >= SysOpLevel) == targetSysop { // same tier already holds this key
+			return nil, ErrKeyTaken
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	res, err := r.st.db.Exec(
 		`INSERT INTO user_key (user_id, public_key, fingerprint, comment, added_at)
 		 VALUES (?, ?, ?, ?, ?)`,
 		userID, normalised, fp, comment, fmtTime(now))
 	if err != nil {
-		// The partial unique index on active fingerprints (migration 004) is the
-		// race-safe enforcement of one-account-per-key; map its violation to a
-		// clear sentinel for callers (apply flow, profile add).
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") &&
-			strings.Contains(err.Error(), "fingerprint") {
-			return nil, ErrKeyTaken
-		}
 		return nil, err
 	}
 	id, err := res.LastInsertId()

@@ -29,7 +29,13 @@ type Store struct {
 	vault    *crypto.Vault
 	filesDir string     // sealed file-library blobs live here
 	uploadMu sync.Mutex // serializes file uploads so the quota check is atomic
+	keyMu    sync.Mutex // serializes SSH-key registration so the per-tier check is atomic
 }
+
+// SysOpLevel is the access-level threshold at/above which an account is a SysOp
+// (operator tier). Mirrors menu.CoSysOpLevel; kept here so the data layer can
+// reason about tiers (e.g. one key may map to one sysop + one regular account).
+const SysOpLevel = 80
 
 // Open opens (creating if needed) the SQLite database at path with the agreed
 // pragmas — WAL journalling, a busy timeout, foreign keys, and NORMAL sync —
