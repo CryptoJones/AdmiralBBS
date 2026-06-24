@@ -173,3 +173,17 @@ func TestCowboyOneSessionPerName(t *testing.T) {
 		t.Error("Online should be case-insensitive")
 	}
 }
+
+// Inventory shows the player's credits (eddies), not just items — players expect
+// their money on the same screen as their carried goods.
+func TestCowboyInventoryShowsCredits(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	out, b := sink()
+	p := w.Connect("Case", out)
+	p.Eddies = 1234
+	b.Reset()
+	w.Command(p, "inventory")
+	if !strings.Contains(b.String(), "1234") {
+		t.Fatalf("inventory did not show credits; got:\n%s", b.String())
+	}
+}

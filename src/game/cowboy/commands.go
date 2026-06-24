@@ -209,8 +209,9 @@ func (w *World) score(p *Player) {
 
 func (w *World) inventory(p *Player) {
 	p.send(style(neon, "-- Inventory --") + crlf)
+	p.send(style(gold, "  €$ "+itoa(p.Eddies)+" eddies") + crlf)
 	if len(p.Inv) == 0 {
-		p.send(style(dim, "  (empty)") + crlf)
+		p.send(style(dim, "  (no items)") + crlf)
 		return
 	}
 	for name, qty := range p.Inv {
