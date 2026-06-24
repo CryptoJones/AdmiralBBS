@@ -13,6 +13,16 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.1.1] - 2026-06-24
+
+### Fixed
+- **Console Cowboy: `use` no longer wastes a consumable at full HP/RAM.** Using a
+  stimpak at full HP (or a ram-chip at full RAM) consumed the item for zero
+  benefit; it's now refused with "already full — save the …" and the item is
+  kept. Found in local playtesting.
+- **Console Cowboy: `use` with no argument** said "You don't have a ." — it now
+  prompts "Use what? (see INVENTORY)".
+
 ## [1.1.0] - 2026-06-24
 
 ### Added
@@ -153,7 +163,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.1
 [1.1.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.0
 [1.0.9]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.9
 [1.0.8]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.8

@@ -65,6 +65,10 @@ func (w *World) buy(p *Player, arg string) {
 
 func (w *World) use(p *Player, arg string) {
 	name := strings.ToLower(strings.TrimSpace(arg))
+	if name == "" {
+		p.send(style(dim, "Use what? (see INVENTORY)") + crlf)
+		return
+	}
 	if p.Inv[name] <= 0 {
 		p.send(style(dim, "You don't have a "+name+".") + crlf)
 		return
@@ -72,6 +76,15 @@ func (w *World) use(p *Player, arg string) {
 	x, ok := findWare(name)
 	if !ok || (x.heal <= 0 && x.ram <= 0) {
 		p.send(style(dim, "You can't use that.") + crlf)
+		return
+	}
+	// Don't waste a single-use consumable when it would have no effect.
+	if x.ram <= 0 && x.heal > 0 && p.HP >= p.MaxHP {
+		p.send(style(dim, "Your HP is already full — save the "+name+".") + crlf)
+		return
+	}
+	if x.heal <= 0 && x.ram > 0 && p.RAM >= maxRAM(p) {
+		p.send(style(dim, "Your RAM is already full — save the "+name+".") + crlf)
 		return
 	}
 	p.Inv[name]--
