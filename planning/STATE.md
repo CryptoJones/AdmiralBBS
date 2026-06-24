@@ -2,6 +2,18 @@
 
 _Last updated: 2026-06-24_
 
+**v2.0.0 (door carve-out, 2026-06-24)** — the bundled door game was extracted to
+its own repo, [CryptoJones/ChromeCircuitCowboys](https://github.com/CryptoJones/ChromeCircuitCowboys)
+(first standalone release v1.0.0). AdmiralBBS is now a pure BBS: it ships **no**
+game code (`src/game/cowboy` + `src/cmd/cowboy` and their tests removed). Doors
+register through a new generic, repeatable `-door "name|network|address|minlevel"`
+flag (the hardcoded `-cowboy` flag is gone — **breaking**, hence the major bump).
+Both binaries gained a forge-agnostic update check (`-update-url` /
+`$ADMIRALBBS_UPDATE_URL`, GitHub/Codeberg/Forgejo-shape, never hardcoded), and
+`scripts/install-door.sh` fetches/builds/installs the door from a configurable
+repo. The generic resident-door framework (`src/doors`, `src/store/doors.go`)
+stays; `tests/cowboy_door_test.go` now exercises only that generic Doors API.
+
 > **What's left lives in [`planning/BACKLOG.md`](BACKLOG.md)** — now FULLY
 > CLEARED (2026-06-24). All P1/P2/P3 items shipped across S014–S021.
 

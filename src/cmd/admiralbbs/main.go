@@ -4,12 +4,16 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -29,9 +33,38 @@ import (
 
 const sysopLevel = 100
 
+// checkUpdate asynchronously compares the running version to the latest release
+// at updateURL — a forge "releases/latest" JSON endpoint ({"tag_name":"vX.Y.Z"},
+// the shape GitHub, Codeberg, and Forgejo all share). The forge is configured,
+// never hardcoded: empty URL or any error is a silent no-op and never blocks
+// startup.
+func checkUpdate(current, updateURL string) {
+	if strings.TrimSpace(updateURL) == "" {
+		return
+	}
+	go func() {
+		client := &http.Client{Timeout: 6 * time.Second}
+		resp, err := client.Get(updateURL)
+		if err != nil {
+			return
+		}
+		defer resp.Body.Close()
+		var rel struct {
+			TagName string `json:"tag_name"`
+		}
+		if json.NewDecoder(resp.Body).Decode(&rel) != nil {
+			return
+		}
+		latest := strings.TrimPrefix(strings.TrimSpace(rel.TagName), "v")
+		if latest != "" && latest != current {
+			log.Printf("*** UPDATE AVAILABLE: AdmiralBBS %s is out (running %s) — %s ***", latest, current, updateURL)
+		}
+	}()
+}
+
 // version is the released BBS version (SemVer). Bump the PATCH on each merge;
 // MINOR for backward-compatible features, MAJOR for breaking changes.
-const version = "1.6.0"
+const version = "2.0.0"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -54,7 +87,13 @@ func main() {
 	maxPerUser := flag.Int("max-per-user", 1, "max concurrent sessions per user (one node per caller)")
 	nodes := flag.Int("nodes", 64, "max concurrent member sessions (node count)")
 	doorsDataFlag := flag.String("doors-data", "", "persistent door data dir (default <db-dir>/doors-data)")
-	cowboyAddr := flag.String("cowboy", "", "register 'Chrome Circuit Cowboys' resident door at this addr (e.g. 127.0.0.1:4000)")
+	var doorSpecs []string
+	flag.Func("door", `register a resident door, "name|network|address|minlevel" (repeatable) — e.g. "Chrome Circuit Cowboys|tcp|127.0.0.1:4000|0"`, func(s string) error {
+		doorSpecs = append(doorSpecs, s)
+		return nil
+	})
+	updateURL := flag.String("update-url", os.Getenv("ADMIRALBBS_UPDATE_URL"),
+		"forge 'releases/latest' JSON endpoint to check for updates (GitHub/Codeberg/Forgejo shape); empty = no check")
 	flag.Parse()
 	if *showVersion {
 		fmt.Println("AdmiralBBS " + version)
@@ -102,12 +141,21 @@ func main() {
 	if err := db.EnsureSeedDoors(); err != nil {
 		log.Fatalf("seed doors: %v", err)
 	}
-	if *cowboyAddr != "" {
-		if err := db.Doors().EnsureResidentDoor("Chrome Circuit Cowboys", "tcp", *cowboyAddr, 0); err != nil {
-			log.Fatalf("register Chrome Circuit Cowboys door: %v", err)
+	for _, spec := range doorSpecs {
+		parts := strings.SplitN(spec, "|", 4)
+		if len(parts) < 3 {
+			log.Fatalf("bad -door %q (want name|network|address|minlevel)", spec)
 		}
-		log.Printf("Chrome Circuit Cowboys resident door -> %s", *cowboyAddr)
+		minLevel := 0
+		if len(parts) == 4 {
+			minLevel, _ = strconv.Atoi(strings.TrimSpace(parts[3]))
+		}
+		if err := db.Doors().EnsureResidentDoor(parts[0], parts[1], parts[2], minLevel); err != nil {
+			log.Fatalf("register door %q: %v", parts[0], err)
+		}
+		log.Printf("resident door %q -> %s/%s", parts[0], parts[1], parts[2])
 	}
+	checkUpdate(version, *updateURL)
 	log.Printf("AdmiralBBS %s starting", version)
 	log.Printf("database ready at %s (WAL, encrypted at rest)", *dbPath)
 

@@ -13,6 +13,34 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [2.0.0] - 2026-06-24
+
+**The bundled door game is gone — extracted to its own repo.** Chrome Circuit
+Cowboys now ships and versions independently at
+[CryptoJones/ChromeCircuitCowboys](https://github.com/CryptoJones/ChromeCircuitCowboys)
+(first standalone release v1.0.0). AdmiralBBS is now a pure BBS: it ships no
+game code, only the generic resident-door framework any door can plug into.
+
+### Removed (breaking)
+- All bundled game code (`src/game/cowboy`, `src/cmd/cowboy`) and its tests. The
+  door is no longer built, shipped, or versioned with the BBS.
+- The hardcoded `-cowboy <addr>` flag. **Migration:** register the door with the
+  new generic `-door` flag (below) — e.g.
+  `-door "Chrome Circuit Cowboys|tcp|127.0.0.1:4000|0"`.
+
+### Added
+- **Generic resident-door registration.** Repeatable `-door
+  "name|network|address|minlevel"` flag registers any door speaking the
+  resident-door bridge protocol — nothing game-specific is compiled in.
+- **Forge-agnostic update check.** `-update-url` (or `$ADMIRALBBS_UPDATE_URL`)
+  points at a forge `releases/latest` JSON endpoint (GitHub/Codeberg/Forgejo all
+  share the `{"tag_name":"vX.Y.Z"}` shape); on startup the BBS logs a notice if a
+  newer release exists. No forge is hardcoded — empty URL = no check.
+- **`scripts/install-door.sh`** — fetches, builds, and installs a resident door
+  from a configurable repo (defaults to Chrome Circuit Cowboys; override
+  `DOOR_REPO`/`DOOR_REF`/etc. for Codeberg or any other forge).
+- **`-version`** flag prints the version and exits.
+
 ## [1.6.0] - 2026-06-24
 
 ### Changed
@@ -252,7 +280,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.0
 [1.6.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.6.0
 [1.5.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.5.0
 [1.4.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.4.0
