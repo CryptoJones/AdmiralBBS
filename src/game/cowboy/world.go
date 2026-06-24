@@ -51,7 +51,7 @@ func maxRAM(p *Player) int { return 5 + p.Intelligence/2 + p.DeckBonus }
 func (w *World) SetRoll(f func(n int) int) { w.roll = f }
 
 func (w *World) spawn(t *MobTemplate) {
-	w.mobs = append(w.mobs, &Mob{tmpl: t, HP: t.HP, RoomID: t.Home})
+	w.mobs = append(w.mobs, &Mob{tmpl: t, origin: t, HP: t.HP, RoomID: t.Home})
 }
 
 // ---- accessors used by commands.go and tests ----

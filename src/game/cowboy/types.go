@@ -62,12 +62,13 @@ type MobTemplate struct {
 
 // Mob is a live instance of a MobTemplate in the world.
 type Mob struct {
-	tmpl        *MobTemplate
-	HP          int
-	RoomID      string
-	target      *Player
-	respawnIn   int  // ticks until this dead mob respawns (0 = alive)
-	dead        bool
+	tmpl      *MobTemplate // current template (may be a later stage after a morph)
+	origin    *MobTemplate // the spawn template — restored on respawn so multi-stage ICE resets
+	HP        int
+	RoomID    string
+	target    *Player
+	respawnIn int // ticks until this dead mob respawns (0 = alive)
+	dead      bool
 }
 
 // Room is one location in the city/net.
