@@ -31,7 +31,7 @@ const sysopLevel = 100
 
 // version is the released BBS version (SemVer). Bump the PATCH on each merge;
 // MINOR for backward-compatible features, MAJOR for breaking changes.
-const version = "1.0.1"
+const version = "1.0.2"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -41,7 +41,7 @@ func main() {
 	auditPath := flag.String("audit", "audit.jsonl", "encrypted audit log path")
 	dbPath := flag.String("db", "admiralbbs.db", "SQLite database path")
 	saltPath := flag.String("salt", "key.salt", "KDF salt path (non-secret)")
-	artPath := flag.String("art", "art/welcome.ans", "welcome screen .ans path")
+	artPath := flag.String("art", "", "optional custom welcome .ans (overrides the generated name/tagline banner)")
 	maxSessions := flag.Int("max-sessions", 100, "max concurrent callers")
 	perIP := flag.Int("per-ip", 5, "max concurrent callers per IP")
 	idle := flag.Duration("idle", 10*time.Minute, "idle disconnect timeout")

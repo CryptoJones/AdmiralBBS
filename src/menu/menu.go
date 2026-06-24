@@ -32,9 +32,56 @@ type Item struct {
 // Menu is a titled (optionally art-backed) list of items.
 type Menu struct {
 	Title    string
-	Subtitle string // optional line under the title (e.g. the BBS tagline)
-	ArtPath  string // optional CP437 .ans banner
+	Subtitle string   // optional line under the title (e.g. the BBS tagline)
+	Banner   []string // optional generated banner lines (shown when ArtPath is unset)
+	ArtPath  string   // optional CP437 .ans banner (a SysOp's custom art; overrides Banner)
 	Items    []Item
+}
+
+// BBSBanner builds a simple, brand-neutral ASCII banner from the configured BBS
+// name + tagline — so the login screen reflects *this* BBS, not a hardcoded one.
+// A SysOp who wants fancier art supplies their own .ans via -art (which wins).
+func BBSBanner(name, tagline string) []string {
+	title := spaceOut(strings.ToUpper(strings.TrimSpace(name)))
+	if title == "" {
+		title = "B B S"
+	}
+	width := len(title)
+	if len(tagline) > width {
+		width = len(tagline)
+	}
+	width += 6
+	bar := strings.Repeat("=", width)
+	lines := []string{bar, center(title, width)}
+	if t := strings.TrimSpace(tagline); t != "" {
+		lines = append(lines, center(t, width))
+	}
+	return append(lines, bar)
+}
+
+// spaceOut inserts a space between characters ("BBS" -> "B B S") for a retro
+// banner feel, unless the result would be unreasonably wide.
+func spaceOut(s string) string {
+	if len(s)*2 > 70 {
+		return s
+	}
+	r := []rune(s)
+	out := make([]rune, 0, len(r)*2)
+	for i, c := range r {
+		if i > 0 {
+			out = append(out, ' ')
+		}
+		out = append(out, c)
+	}
+	return string(out)
+}
+
+func center(s string, width int) string {
+	if len(s) >= width {
+		return s
+	}
+	left := (width - len(s)) / 2
+	return strings.Repeat(" ", left) + s
 }
 
 // ShowMOTD displays the message of the day and waits for the caller to press
@@ -105,11 +152,19 @@ func (m *Menu) render(s *session.Session) {
 	w := screen.New(s, cap.ANSI, cap.Cols)
 	w.Clear()
 
+	shownArt := false
 	if m.ArtPath != "" {
 		if art, err := screen.LoadArt(m.ArtPath); err == nil && len(art) > 0 {
 			screen.RenderArt(w, art)
 			w.Print("\r\n")
+			shownArt = true
 		}
+	}
+	if !shownArt && len(m.Banner) > 0 {
+		for _, ln := range m.Banner {
+			w.ColorLine(screen.Cyan, ln)
+		}
+		w.Print("\r\n")
 	}
 
 	w.ColorLine(screen.Cyan, m.Title)

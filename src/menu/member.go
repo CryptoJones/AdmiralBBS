@@ -25,11 +25,12 @@ func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts 
 		items = append(items, Item{Key: 'X', Label: "SysOp Control Panel", Action: sysopAction(st, u, auditPath, sysopPass)})
 	}
 	items = append(items, Item{Key: 'G', Label: "Goodbye / Logoff", Action: logoff})
+	name, tagline := st.Settings().BBSName(), st.Settings().Tagline()
 	return &Menu{
-		Title:    st.Settings().BBSName() + " :: Main Menu",
-		Subtitle: st.Settings().Tagline(),
-		ArtPath:  artPath,
-		Items:    items,
+		Title:   name + " :: Main Menu",
+		Banner:  BBSBanner(name, tagline), // shown unless a custom -art is supplied
+		ArtPath: artPath,
+		Items:   items,
 	}
 }
 
