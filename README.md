@@ -36,6 +36,20 @@ the first line of feature code — not retrofitted later:
 
 BBSes were apart of a lot of hackers childhoods and this is a fun project to pay homage to that.
 
+## Door games
+
+AdmiralBBS runs classic **door games** — external programs a caller drops into.
+Two models are supported: single-player / turn-based **subprocess** doors, and
+persistent **resident** servers the BBS bridges for real-time multiplayer. The
+bundled reference is **Console Cowboy 2026**, a multiplayer cyberpunk MUD —
+see [`docs/CONSOLE_COWBOY.md`](docs/CONSOLE_COWBOY.md).
+
+**Want to build your own?** The developer standard — both door models, the
+`door32.sys` dropfile, the resident bridge contract, security expectations, and
+runnable examples — is published at
+**[ABBS-Door-Specification](https://github.com/CryptoJones/ABBS-Door-Specification)**
+(MIT-licensed; commercial and closed-source doors are welcome).
+
 ## Status
 
 See [`planning/STATE.md`](planning/STATE.md) for the current sprint and next action.
