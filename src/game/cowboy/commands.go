@@ -60,6 +60,12 @@ func (w *World) Command(p *Player, line string) (quit bool) {
 		w.buy(p, arg)
 	case "use":
 		w.use(p, arg)
+	case "loot", "salvage":
+		w.loot(p)
+	case "install", "ripper":
+		w.install(p, arg)
+	case "give", "hand":
+		w.give(p, arg)
 	case "inventory", "inv", "i":
 		w.inventory(p)
 	case "quests", "missions", "bounties":
@@ -148,6 +154,9 @@ func (w *World) lookText(p *Player) {
 	if r.Vendor {
 		p.send(style(gold, "A vendor terminal hums here. Type LIST.") + crlf)
 	}
+	if r.Ripper {
+		p.send(style(gold, "A ripperdoc's chair waits here. INSTALL salvaged cyberware.") + crlf)
+	}
 	// Exits.
 	var dirs []string
 	for _, d := range []string{"north", "south", "east", "west", "up", "down", "in", "out"} {
@@ -163,6 +172,10 @@ func (w *World) lookText(p *Player) {
 	// Mobs.
 	for _, m := range w.liveMobsIn(p.RoomID) {
 		p.send(style(hot, m.tmpl.Name+" is here.") + crlf)
+	}
+	// Flatlined sleeves (corpses) waiting to be looted.
+	for _, c := range w.corpsesIn(p.RoomID) {
+		p.send(style(dim, c.Owner+"'s flatlined sleeve lies here. (LOOT)") + crlf)
 	}
 }
 
@@ -267,6 +280,67 @@ func (w *World) goHome(p *Player) {
 	w.move(p, "in")
 }
 
+// loot strips every flatlined sleeve in the room into your pack. Items are
+// usable immediately; salvaged cyberware must be re-installed at a ripperdoc.
+// Open recovery: anyone can loot any sleeve (recover for a crewmate — or swipe it).
+func (w *World) loot(p *Player) {
+	cs := w.corpsesIn(p.RoomID)
+	if len(cs) == 0 {
+		p.send(style(dim, "There's no flatlined sleeve to loot here.") + crlf)
+		return
+	}
+	total := 0
+	var cyber []string
+	for _, c := range cs {
+		for name, qty := range c.Loot {
+			if qty <= 0 {
+				continue
+			}
+			p.Inv[name] += qty
+			total += qty
+			if x, ok := findWare(name); ok && (x.bonus > 0 || x.deck > 0) {
+				cyber = append(cyber, name)
+			}
+		}
+	}
+	w.removeCorpsesIn(p.RoomID)
+	if total == 0 {
+		p.send(style(dim, "The sleeve is already stripped bare.") + crlf)
+		return
+	}
+	p.send(style(green, "You strip the sleeve — its gear is now in your pack.") + crlf)
+	if len(cyber) > 0 {
+		p.send(style(neon, "Salvaged cyberware: ") + strings.Join(cyber, ", ") +
+			style(dim, " — INSTALL it at a ripperdoc to use it again.") + crlf)
+	}
+	w.broadcast(p.RoomID, p, style(dim, p.Name+" loots a flatlined sleeve.")+crlf)
+}
+
+// give hands an inventory item to another runner in the room (e.g. returning a
+// crewmate's recovered gear). Syntax: GIVE <item> <runner>.
+func (w *World) give(p *Player, arg string) {
+	fields := strings.Fields(arg)
+	if len(fields) < 2 {
+		p.send(style(dim, "Give what to whom? GIVE <item> <runner>.") + crlf)
+		return
+	}
+	targetName := fields[len(fields)-1]
+	item := strings.ToLower(strings.Join(fields[:len(fields)-1], " "))
+	target := w.playerInRoomByName(p.RoomID, targetName, p)
+	if target == nil {
+		p.send(style(dim, "No runner named '"+targetName+"' is here.") + crlf)
+		return
+	}
+	if p.Inv[item] <= 0 {
+		p.send(style(dim, "You don't have a "+item+".") + crlf)
+		return
+	}
+	w.consumeInv(p, item)
+	target.Inv[item]++
+	p.send(style(green, "You hand "+target.Name+" the "+item+".") + crlf)
+	target.send(style(green, p.Name+" hands you a "+item+".") + crlf)
+}
+
 func helpText() string {
 	return crlf + style(neon, "== Console Cowboy 2026 — commands ==") + crlf +
 		"  Movement : N S E W U D  (or north/south/...)\r\n" +
@@ -278,6 +352,9 @@ func helpText() string {
 		"  who             — who's jacked in\r\n" +
 		"  score (st)      — your character sheet\r\n" +
 		"  list / buy <x>  — vendor (at shops); use <item> to consume\r\n" +
+		"  loot            — strip a flatlined sleeve (corpse) of its gear\r\n" +
+		"  install <cyber> — ripperdoc re-installs salvaged cyberware (at the Night Market)\r\n" +
+		"  give <item> <runner> — hand recovered gear back to a crewmate\r\n" +
 		"  inventory (i)   — what you're carrying\r\n" +
 		"  quests          — fixer bounty board (at a shop); accept <#> / claim\r\n" +
 		"  programs / run <name> — netrun demons (scalpel/hammer/leech/mirror/medic)\r\n" +

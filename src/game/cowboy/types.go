@@ -80,7 +80,17 @@ type Room struct {
 	Desc    string
 	Exits   map[string]string // direction -> room id
 	Vendor  bool              // a shop operates here
+	Ripper  bool              // a ripperdoc operates here — re-install salvaged cyberware
 	Private bool              // a per-runner capsule pod — occupants are isolated (no one shares it)
+}
+
+// Corpse is a dead runner's old sleeve, left where they flatlined. It holds the
+// gear (consumables + cyberware by ware name) the new clone woke up without.
+// It persists until looted; anyone may loot it (open recovery + risk).
+type Corpse struct {
+	Owner  string
+	RoomID string
+	Loot   map[string]int // ware name -> qty (consumables usable on loot; cyberware needs ripperdoc INSTALL)
 }
 
 // SavedPlayer is the persisted slice of a Player (progress survives logout).
