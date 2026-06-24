@@ -5,17 +5,33 @@
 //	ADMIRALBBS_KEY=... sysopctl -db data/admiralbbs.db -salt data/key.salt list
 //	ADMIRALBBS_KEY=... sysopctl approve <handle> [level]   # approve + print token
 //	ADMIRALBBS_KEY=... sysopctl promote <handle> [level]   # set status+level directly
+//
+// bootstrap creates a ready-to-use SysOp in ONE step — handle + SSH public key +
+// password — so an operator never has to do the telnet-apply → onboard dance to
+// stand up the first account. It's the self-service path for admins without an
+// agent. The password comes from $SYSOP_PASSWORD (not echoed) or, if unset, is
+// read from stdin:
+//
+//	ADMIRALBBS_KEY=... SYSOP_PASSWORD=... \
+//	  sysopctl -db data/admiralbbs.db -salt data/key.salt \
+//	  bootstrap <handle> <pubkey-file|-> [level]
 package main
 
 import (
+	"bufio"
+	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"admiralbbs/src/crypto"
 	"admiralbbs/src/store"
+
+	"golang.org/x/crypto/ssh"
 )
 
 func main() {
@@ -24,7 +40,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) == 0 {
-		log.Fatal("usage: sysopctl [-db ...] [-salt ...] list | approve <handle> [level] | promote <handle> [level]")
+		log.Fatal("usage: sysopctl [-db ...] [-salt ...] list | approve <handle> [level] | promote <handle> [level] | bootstrap <handle> <pubkey-file|-> [level]")
 	}
 
 	secret := os.Getenv("ADMIRALBBS_KEY")
@@ -87,6 +103,94 @@ func main() {
 			}
 			fmt.Printf("One-time onboarding token (relay out-of-band; used once on first SSH login):\n  %s\n", tok)
 		}
+
+	case "bootstrap":
+		// bootstrap <handle> <pubkey-file|-> [level]
+		if len(args) < 3 {
+			log.Fatalf("usage: sysopctl bootstrap <handle> <pubkey-file|-> [level]")
+		}
+		handle := args[1]
+		level := 100
+		if len(args) >= 4 {
+			if v, e := strconv.Atoi(args[3]); e == nil {
+				level = v
+			}
+		}
+
+		// Public key: from a file, or "-" for stdin.
+		var keyBytes []byte
+		if args[2] == "-" {
+			keyBytes, err = io.ReadAll(os.Stdin)
+		} else {
+			keyBytes, err = os.ReadFile(args[2])
+		}
+		if err != nil {
+			log.Fatalf("read public key: %v", err)
+		}
+		pubLine := strings.TrimSpace(string(keyBytes))
+		if err := store.ValidatePublicKey(pubLine); err != nil {
+			log.Fatalf("invalid SSH public key: %v", err)
+		}
+
+		// Password: $SYSOP_PASSWORD (not echoed) or a line from stdin.
+		pw := os.Getenv("SYSOP_PASSWORD")
+		if pw == "" {
+			fmt.Fprint(os.Stderr, "SysOp password (input is visible): ")
+			line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+			pw = strings.TrimRight(line, "\r\n")
+		}
+		if pw == "" {
+			log.Fatal("empty password")
+		}
+		if len(pw) < 8 {
+			fmt.Fprintf(os.Stderr, "warning: password is %d chars; the BBS requires >=8 for member-facing changes.\n", len(pw))
+		}
+		hash, herr := store.HashPassword(pw)
+		if herr != nil {
+			log.Fatalf("hash password: %v", herr)
+		}
+
+		// Create (or reuse) the user, set password, approve at the SysOp level.
+		u, uerr := db.Users().ByHandle(handle)
+		if uerr != nil {
+			u, uerr = db.Users().Create(handle, "", "", "")
+			if uerr != nil {
+				log.Fatalf("create user: %v", uerr)
+			}
+		}
+		if err := db.Users().SetPassword(u.ID, hash); err != nil {
+			log.Fatalf("set password: %v", err)
+		}
+		if err := db.Users().Approve(u.ID, level); err != nil {
+			log.Fatalf("approve: %v", err)
+		}
+
+		// Register the SSH key (idempotent: skip if this account already has it).
+		alreadyHas := false
+		if pk, _, _, _, perr := ssh.ParseAuthorizedKey([]byte(pubLine)); perr == nil {
+			fp := ssh.FingerprintSHA256(pk)
+			if active, e := db.Keys().Active(u.ID); e == nil {
+				for _, k := range active {
+					if k.Fingerprint == fp {
+						alreadyHas = true
+					}
+				}
+			}
+		}
+		if !alreadyHas {
+			k, kerr := db.Keys().Add(u.ID, pubLine)
+			if errors.Is(kerr, store.ErrKeyTaken) {
+				log.Fatalf("that SSH key is already registered to another account")
+			}
+			if kerr != nil {
+				log.Fatalf("add key: %v", kerr)
+			}
+			fmt.Printf("registered SSH key %s\n", k.Fingerprint)
+		} else {
+			fmt.Println("SSH key already registered to this account")
+		}
+		fmt.Printf("SysOp %q is ready at access level %d (password set, key registered).\n", handle, level)
+		fmt.Println("Log in over SSH with that key + password — no onboarding token needed.")
 
 	default:
 		log.Fatalf("unknown command %q", args[0])
