@@ -13,6 +13,15 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.7] - 2026-06-24
+
+### Added
+- **Console Cowboy autosave + save-on-shutdown.** The world goroutine now
+  autosaves every connected player every 30s, and a SIGINT/SIGTERM handler
+  flushes all players before the process exits (`World.SaveAll`). Previously
+  characters persisted only on a clean disconnect, so a server restart/crash
+  lost progress since login. After this lands, cowboy restarts are non-destructive.
+
 ## [1.0.6] - 2026-06-24
 
 ### Fixed
@@ -116,7 +125,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.6...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.7...HEAD
+[1.0.7]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.7
 [1.0.6]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.6
 [1.0.5]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.5
 [1.0.4]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.4

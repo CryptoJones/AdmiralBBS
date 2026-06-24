@@ -10,7 +10,10 @@ import (
 	"flag"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"admiralbbs/src/game/cowboy"
@@ -34,10 +37,17 @@ func main() {
 	// The single world goroutine: every mutation happens here.
 	go func() {
 		ticker := time.NewTicker(*tick)
+		autosave := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
+		defer autosave.Stop()
 		for {
 			select {
 			case ev := <-events:
+				if ev.typ == evShutdown {
+					world.SaveAll() // flush everyone before the process exits
+					close(ev.done)
+					return
+				}
 				handle(world, ev)
 			case <-ticker.C:
 				world.Tick()
@@ -49,8 +59,26 @@ func main() {
 						world.PromptIfDirty(c.player)
 					}
 				}
+			case <-autosave.C:
+				world.SaveAll() // periodic persistence so a crash loses < 30s
 			}
 		}
+	}()
+
+	// Graceful shutdown: on SIGINT/SIGTERM (e.g. systemctl restart), flush all
+	// connected players via the world goroutine before exiting.
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		log.Print("shutting down — saving players")
+		done := make(chan struct{})
+		events <- event{typ: evShutdown, done: done}
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+		}
+		os.Exit(0)
 	}()
 
 	ln, err := net.Listen("tcp", *addr)
@@ -167,6 +195,7 @@ const (
 	evLine
 	evDisconnect
 	evClose
+	evShutdown // flush all players, then signal done (graceful shutdown)
 )
 
 // connectResult tells the connection goroutine how the world handled a connect:
@@ -184,6 +213,7 @@ type event struct {
 	line  string
 	spec  cowboy.CharSpec
 	reply chan connectResult
+	done  chan struct{} // evShutdown: closed once all players are saved
 }
 
 func handle(world *cowboy.World, ev event) {
