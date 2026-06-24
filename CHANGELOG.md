@@ -13,6 +13,18 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.5.0] - 2026-06-24
+
+### Changed
+- **Console Cowboy: PvP is now live EVERYWHERE except the safe zone outside the
+  clone pods.** Previously PvP was Net-only. Now you can `attack <runner>` in any
+  room (meatspace duels use your melee swing; Net duels still breach + spend RAM).
+  - **No-violence zone:** Neon Alley (the street the clone pods open onto) and the
+    private Re-Sleeve Bay are safe. **Draw on another runner there and an NCPD
+    security drone flatlines _you_** on the spot (you drop your sleeve + pay the
+    clone fee; the target is untouched).
+  - A duel ends if either runner leaves to a safe zone.
+
 ## [1.4.0] - 2026-06-24
 
 ### Added
@@ -218,7 +230,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.5.0
 [1.4.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.4.0
 [1.3.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.3.0
 [1.2.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.2.0

@@ -82,6 +82,7 @@ type Room struct {
 	Vendor  bool              // a shop operates here
 	Ripper  bool              // a ripperdoc operates here — re-install salvaged cyberware
 	Private bool              // a per-runner capsule pod — occupants are isolated (no one shares it)
+	Safe    bool              // no-violence zone (outside the clone pods): a security drone flatlines PvP aggressors
 }
 
 // Corpse is a dead runner's old sleeve, left where they flatlined. It holds the
