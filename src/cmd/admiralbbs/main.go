@@ -110,6 +110,7 @@ func main() {
 
 	presence := session.NewPresence(*maxPerUser)
 	nodePool := session.NewNodePool(*nodes)
+	roster := session.NewRoster(nil)
 	doorsData := *doorsDataFlag
 	if doorsData == "" {
 		doorsData = filepath.Join(filepath.Dir(*dbPath), "doors-data")
@@ -172,9 +173,12 @@ func main() {
 		}
 		defer nodePool.Release(node)
 
+		roster.Join(node, u.Handle, s.IP(), s.Transport())
+		defer roster.Leave(node)
+
 		enforceBudget(s, db, u, *dailyMinutes)
 		doorOpts := doors.Opts{RunAsUID: *doorUID, RunAsGID: *doorGID, Chroot: *doorChroot, NoNetwork: *doorNoNet, Isolate: *doorIsolate}
-		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts, node, doorsData).Run(s)
+		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts, node, doorsData, roster).Run(s)
 	}
 
 	var wg sync.WaitGroup

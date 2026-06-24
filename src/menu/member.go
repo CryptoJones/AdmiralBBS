@@ -9,12 +9,13 @@ import (
 // Member builds the authenticated member's main menu. Subsystem entries are
 // placeholders until their sprints land; the Profile entry (self-service SSH
 // key management) is live now.
-func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts doors.Opts, node int, doorsData string) *Menu {
+func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts doors.Opts, node int, doorsData string, roster *session.Roster) *Menu {
 	items := []Item{
 		{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u)},
 		{Key: 'E', Label: "Private Mail", Action: mailAction(st, u)},
 		{Key: 'F', Label: "File Library", Action: filesAction(st, u)},
 		{Key: 'D', Label: "Door Games", Action: doorsAction(st, u, doorOpts, node, doorsData)},
+		{Key: 'W', Label: "Who's Online", Action: whosOnlineAction(roster)},
 		{Key: 'K', Label: "My SSH Keys / Profile", Action: profileAction(st, u)},
 	}
 	if u.AccessLevel >= CoSysOpLevel {
@@ -27,6 +28,15 @@ func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts 
 func sysopAction(st *store.Store, u *store.User, auditPath string) Action {
 	return func(s *session.Session) (Outcome, error) {
 		if err := RunSysOp(s, st, u, auditPath); err != nil {
+			return Logoff, err
+		}
+		return Continue, nil
+	}
+}
+
+func whosOnlineAction(roster *session.Roster) Action {
+	return func(s *session.Session) (Outcome, error) {
+		if err := RunWhosOnline(s, roster); err != nil {
 			return Logoff, err
 		}
 		return Continue, nil
