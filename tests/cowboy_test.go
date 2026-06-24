@@ -1,8 +1,10 @@
 package tests
 
 import (
+	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"admiralbbs/src/game/cowboy"
 )
@@ -228,5 +230,30 @@ func TestCowboyUseEmptyArg(t *testing.T) {
 	w.Command(p, "use")
 	if !strings.Contains(b.String(), "Use what?") {
 		t.Fatalf("expected 'Use what?'; got:\n%s", b.String())
+	}
+}
+
+// The welcome banner box must render with all rows the same visible width, so
+// the ╔/║/╝ borders stay vertically aligned (regression: hand-spaced padding
+// drifted, and the em-dash in the tagline threw off byte-based counts).
+func TestCowboyBannerBoxAligned(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	var b strings.Builder
+	w.Connect("Case", func(s string) { b.WriteString(s) }) // enter() sends the banner
+	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	var widths []int
+	for _, ln := range strings.Split(b.String(), "\n") {
+		clean := ansi.ReplaceAllString(strings.TrimRight(ln, "\r"), "")
+		if strings.HasPrefix(clean, "╔") || strings.HasPrefix(clean, "║") || strings.HasPrefix(clean, "╚") {
+			widths = append(widths, utf8.RuneCountInString(clean))
+		}
+	}
+	if len(widths) != 4 {
+		t.Fatalf("expected 4 banner box rows, found %d", len(widths))
+	}
+	for i, wd := range widths {
+		if wd != widths[0] {
+			t.Fatalf("banner row %d width=%d != top-border width=%d — box misaligned", i, wd, widths[0])
+		}
 	}
 }

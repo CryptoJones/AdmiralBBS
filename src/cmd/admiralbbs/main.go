@@ -31,7 +31,7 @@ const sysopLevel = 100
 
 // version is the released BBS version (SemVer). Bump the PATCH on each merge;
 // MINOR for backward-compatible features, MAJOR for breaking changes.
-const version = "1.1.1"
+const version = "1.1.2"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
