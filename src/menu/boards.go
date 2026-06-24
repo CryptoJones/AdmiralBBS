@@ -31,6 +31,11 @@ func RunBoards(s *session.Session, st *store.Store, u *store.User) error {
 			w.Reset()
 			w.Print(" — ")
 			w.SafePrint(a.Description)
+			if n, _ := st.ReadPointers().NewCount(u.ID, a.ID); n > 0 {
+				w.Color(screen.Magenta)
+				w.Printf("  (%d new)", n)
+				w.Reset()
+			}
 			w.Print("\r\n")
 		}
 		w.Color(screen.Green)
@@ -57,6 +62,14 @@ func RunBoards(s *session.Session, st *store.Store, u *store.User) error {
 func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.MessageArea, handles *handleCache) error {
 	newestFirst := false
 	page := 0
+	// Snapshot the read pointer on entry so we can flag what's new this visit;
+	// the pointer itself is advanced to the area's newest post on exit.
+	entrySeen, _ := st.ReadPointers().LastSeen(u.ID, area.ID)
+	markRead := func() {
+		if maxID, err := st.ReadPointers().MaxMessageID(area.ID); err == nil {
+			_ = st.ReadPointers().Mark(u.ID, area.ID, maxID)
+		}
+	}
 	var listed []*store.Message // non-nil => an active search/filter result
 	var listedHeader string
 	for {
@@ -96,7 +109,13 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 			m := msgs[i]
 			w.Color(screen.Yellow)
 			w.Printf("  %d) ", i+1)
-			w.Color(screen.White)
+			if m.ID > entrySeen {
+				w.Color(screen.Magenta)
+				w.Print("* ")
+			} else {
+				w.Color(screen.White)
+				w.Print("  ")
+			}
 			w.SafePrint(firstLine(m.Subject))
 			w.Reset()
 			w.Printf("  — %s, %s\r\n", handles.handle(m.AuthorID), m.PostedAt.Format("2006-01-02"))
@@ -112,6 +131,7 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 		in = strings.TrimSpace(in)
 		switch {
 		case in == "" || strings.EqualFold(in, "q"):
+			markRead()
 			return nil
 		case in == ">":
 			page++

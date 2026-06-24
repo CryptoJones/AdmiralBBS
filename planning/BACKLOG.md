@@ -42,8 +42,12 @@ All three landed on `main`. The moderation gap CJ surfaced is closed.
   replies); `Mail.Delete` (recipient-only). Board read view offers [E]dit/[D]elete
   to the author and [D]elete to SysOp; mail read view offers [D]elete. Tested:
   ownership enforcement, cascade delete, and recipient-only mail delete.
-- [ ] **"New since last visit" read pointers** — per-user last-read markers so
-  the boards show what's unread.
+- [x] **"New since last visit" read pointers** — DONE (S019, `main`).
+  `board_read` table (migration 007) + `store.ReadPointers`
+  (LastSeen/Mark/NewCount/MaxMessageID; Mark never moves backward). Board list
+  shows "(N new)" per area; in-area new posts are flagged `*`; the pointer
+  advances to the newest post on exit. Store tests + an e2e proving the markers
+  appear on first visit and clear on the second.
 - [ ] **Who's-online** — list currently-connected nodes/users.
 
 ## P3 — Visibility / nice-to-have
