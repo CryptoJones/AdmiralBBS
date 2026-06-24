@@ -27,7 +27,7 @@ func TestCowboyConnectAndLook(t *testing.T) {
 		t.Fatalf("new character wrong: %+v", p)
 	}
 	s := buf.String()
-	for _, want := range []string{"You jack in as Case", "Re-Sleeve Bay", "Exits:"} {
+	for _, want := range []string{"You jack in as Case", "Re-Clone Bay", "Exits:"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("connect output missing %q", want)
 		}
@@ -47,7 +47,7 @@ func TestCowboyMovement(t *testing.T) {
 	if p.RoomID != "back_alley" {
 		t.Fatalf("north -> %s, want back_alley", p.RoomID)
 	}
-	if !strings.Contains(buf.String(), "The Sprawl") {
+	if !strings.Contains(buf.String(), "The Strip") {
 		t.Error("movement didn't show the destination room")
 	}
 }
@@ -386,5 +386,26 @@ func TestCowboyCorpseLootInstallGive(t *testing.T) {
 	w.Command(helper, "give stimpak Case")
 	if victim.Inv["stimpak"] != 1 || helper.Inv["stimpak"] != 2 {
 		t.Fatalf("give should transfer one stimpak: victim=%d helper=%d", victim.Inv["stimpak"], helper.Inv["stimpak"])
+	}
+}
+
+// RP emotes broadcast a third-person action to the room (me / emote / :shorthand).
+func TestCowboyEmote(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	o1, _ := sink()
+	p1 := w.Connect("Case", o1)
+	w.Command(p1, "out")
+	o2, b2 := sink()
+	p2 := w.Connect("Molly", o2)
+	w.Command(p2, "out") // both in the street
+	b2.Reset()
+	w.Command(p1, "me lights a cigarette")
+	if !strings.Contains(b2.String(), "Case lights a cigarette") {
+		t.Fatalf("emote should broadcast the action; got:\n%s", b2.String())
+	}
+	b2.Reset()
+	w.Command(p1, ":leans on the wall")
+	if !strings.Contains(b2.String(), "Case leans on the wall") {
+		t.Fatalf("colon-emote should broadcast; got:\n%s", b2.String())
 	}
 }

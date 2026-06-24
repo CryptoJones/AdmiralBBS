@@ -1,4 +1,4 @@
-// Command cowboy is the persistent game server for Console Cowboy 2026 — a
+// Command cowboy is the persistent game server for Chrome Circuit Cowboys — a
 // multiplayer cyberpunk MUD. It listens on TCP; AdmiralBBS bridges each caller
 // in as a "resident" door, so everyone shares one live world. All game state is
 // mutated on a single goroutine (events + ticks serialized), so the engine
@@ -85,7 +85,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("listen: %v", err)
 	}
-	log.Printf("Console Cowboy 2026 listening on %s (tick %s)", *addr, *tick)
+	log.Printf("Chrome Circuit Cowboys listening on %s (tick %s)", *addr, *tick)
 	for {
 		nc, err := ln.Accept()
 		if err != nil {

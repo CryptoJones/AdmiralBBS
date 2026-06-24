@@ -30,7 +30,7 @@ func itoa(n int) string { return strconv.Itoa(n) }
 // each row is padded by rune count (so multi-byte glyphs like the em-dash don't
 // throw off the right border) — keeping ╔/║/╝ vertically aligned on any line.
 func banner() string {
-	title := "  C O N S O L E   C O W B O Y   2 0 2 6"
+	title := "  C H R O M E   C I R C U I T   C O W B O Y S   [ C³ ]"
 	tag := "  a cyberpunk netrun — jack in, level up, breach the ICE  "
 	inner := utf8.RuneCountInString(tag)
 	if w := utf8.RuneCountInString(title); w > inner {

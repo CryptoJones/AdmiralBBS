@@ -20,10 +20,10 @@ type Class struct {
 }
 
 var classes = []Class{
-	{ID: "netrunner", Name: "Netrunner", Desc: "console cowboy — breaches ICE; lethal in the Net (high INT)", Body: 8, Reflexes: 9, Intelligence: 13},
-	{ID: "solo", Name: "Solo", Desc: "street muscle — wrecks meatspace foes (high BODY)", Body: 13, Reflexes: 11, Intelligence: 6},
-	{ID: "fixer", Name: "Fixer", Desc: "fast operator — quick and slippery (high REFLEXES)", Body: 9, Reflexes: 13, Intelligence: 8},
-	{ID: "techie", Name: "Techie", Desc: "gearhead generalist — balanced across the board", Body: 10, Reflexes: 10, Intelligence: 10},
+	{ID: "hacker", Name: "Hacker", Desc: "elite breach artist — lethal in the Net (high INT)", Body: 8, Reflexes: 9, Intelligence: 13},
+	{ID: "enforcer", Name: "Enforcer", Desc: "street muscle — wrecks meatspace foes (high BODY)", Body: 13, Reflexes: 11, Intelligence: 6},
+	{ID: "operator", Name: "Operator", Desc: "fast and slippery — quick on the draw (high REFLEXES)", Body: 9, Reflexes: 13, Intelligence: 8},
+	{ID: "mechanic", Name: "Mechanic", Desc: "gearhead generalist — balanced across the board", Body: 10, Reflexes: 10, Intelligence: 10},
 }
 
 // Classes returns the selectable archetypes.
@@ -50,7 +50,7 @@ type CharSpec struct {
 // bytes. Invalid input falls back to sensible defaults rather than erroring.
 func RunCharacterCreation(r *bufio.Reader, out func(string)) (CharSpec, error) {
 	out(crlf + style(neon, "== CHARACTER CREATION ==") + crlf)
-	out(style(dim, "New runner detected. Build your console cowboy.") + crlf + crlf)
+	out(style(dim, "New runner detected. Build your cowboy.") + crlf + crlf)
 	for i, c := range classes {
 		out("  " + style(gold, itoa(i+1)+")") + " " + style(green, c.Name) +
 			style(dim, "  [B"+itoa(c.Body)+" R"+itoa(c.Reflexes)+" I"+itoa(c.Intelligence)+"] — "+c.Desc) + crlf)

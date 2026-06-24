@@ -5,29 +5,29 @@ package cowboy
 // the street (Neon Alley) under your own power.
 const startRoom = "capsule"
 
-// buildRooms returns the Console Cowboy 2026 world map — a slice of Night City
+// buildRooms returns the Chrome Circuit Cowboys world map — a slice of the city
 // and the Net beyond the jack-in port.
 func buildRooms() map[string]*Room {
 	rooms := []*Room{
-		{ID: "capsule", Name: "Re-Sleeve Bay :: Your Booth", Private: true, Safe: true,
-			Desc: "A private booth in the clone clinic. You come to in a fresh sleeve, your\r\ncortical stack restored from its realtime backup — calm, whole, and broke a\r\nfew eddies lighter for the body. The clinic doors slide OUT into the street.",
+		{ID: "capsule", Name: "Re-Clone Bay :: Your Booth", Private: true, Safe: true,
+			Desc: "A private booth in the clone clinic. You come to in a fresh clone, your\r\nmind restored from its realtime backup — calm, whole, and a few scrip lighter\r\nfor the new body. The clinic doors slide OUT into the street.",
 			Exits: map[string]string{"out": "neon_alley"}},
 		{ID: "neon_alley", Name: "Neon Alley", Safe: true,
-			Desc: "Rain hisses on hot neon. Holo-ads for synth-ramen and combat clinics\r\nflicker across puddles. The Sprawl roars to the east; a battered door to\r\nthe south leads into the Chrome Rose; the re-sleeve clinic is just IN off\r\nthe street. NCPD drones hum overhead — draw on another runner here and they\r\nflatline you on the spot. (no-violence zone)",
+			Desc: "Rain hisses on hot neon. Holo-ads for synth-ramen and combat clinics\r\nflicker across puddles. The Strip roars to the east; a battered door to\r\nthe south leads into the Chrome Rose; the re-clone clinic is just IN off\r\nthe street. Security drones hum overhead — draw on another runner here and they\r\nflatline you on the spot. (no-violence zone)",
 			Exits: map[string]string{"east": "the_sprawl", "south": "chrome_bar", "in": "capsule"}},
 		{ID: "chrome_bar", Name: "The Chrome Rose", Vendor: true,
-			Desc: "A netrunner dive. Chrome-plated regulars jack into the bar's local node\r\nwhile a rigger bartender slings stims and gear. A vendor terminal glows\r\nhere (type LIST).",
+			Desc: "A runner dive. Chrome-plated regulars jack into the bar's local node\r\nwhile an augmented bartender slings stims and gear. A vendor terminal glows\r\nhere (type LIST).",
 			Exits: map[string]string{"north": "neon_alley"}},
-		{ID: "the_sprawl", Name: "The Sprawl",
+		{ID: "the_sprawl", Name: "The Strip",
 			Desc: "Endless arcologies stacked into the smog. Crowds churn between street\r\nstalls. A black alley opens north; corporate spires gleam east; the Night\r\nMarket is south.",
 			Exits: map[string]string{"west": "neon_alley", "north": "back_alley", "east": "corpo_plaza", "south": "market"}},
 		{ID: "back_alley", Name: "Back Alley",
 			Desc: "A dead-end choked with dumpsters and busted drones. Gangers tag the walls\r\nin UV paint and don't like tourists.",
 			Exits: map[string]string{"south": "the_sprawl"}},
-		{ID: "market", Name: "Night Market", Vendor: true, Ripper: true,
-			Desc: "Stalls of grey-market cyberware and noodle carts under string lights. A\r\nfixer runs a vendor stall (LIST) and a back-room ripperdoc wires in chrome\r\n(INSTALL salvaged cyberware).",
+		{ID: "market", Name: "Night Market", Vendor: true, Medic: true,
+			Desc: "Stalls of grey-market cyberware and noodle carts under string lights. A\r\nbroker runs a vendor stall (LIST) and a back-room Emergency Medic wires in chrome\r\n(INSTALL salvaged cyberware).",
 			Exits: map[string]string{"north": "the_sprawl"}},
-		{ID: "corpo_plaza", Name: "Arasaki Plaza",
+		{ID: "corpo_plaza", Name: "Corporate Plaza",
 			Desc: "Glass and gun-metal. Security drones sweep the concourse and corpo-sec in\r\nmirror visors watch everything. A guarded data port hums to the east.",
 			Exits: map[string]string{"west": "the_sprawl", "east": "data_port"}},
 		{ID: "data_port", Name: "Data Port",

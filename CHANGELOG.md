@@ -13,6 +13,28 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.6.0] - 2026-06-24
+
+### Changed
+- **The door is now a fully generic cyberpunk RPG — rebranded "Chrome Circuit
+  Cowboys" (C³) and scrubbed of all franchise-specific IP.** No term is tied to
+  any one property:
+  - **Title:** Console Cowboy 2026 → **Chrome Circuit Cowboys** (banner, help,
+    leaderboard, door registration, server log). Internal package/binary/service
+    names kept as `cowboy` (not player-facing).
+  - **Classes:** Netrunner/Solo/Fixer/Techie → **Hacker/Enforcer/Operator/Mechanic**
+    (same stat profiles).
+  - **Currency:** "eddies" → **"scrip"** (display; the €$ symbol stays).
+  - **Re-sleeve / cortical stack / sleeve** (Altered Carbon) → **re-clone / neural
+    backup / body**; "Re-Sleeve Bay" → **"Re-Clone Bay"**.
+  - **NCPD** → a generic **City Security drone**; **Arasaki Plaza** → **Corporate
+    Plaza**; **The Sprawl** → **The Strip**; **ripperdoc** → **Emergency Medic
+    (EM)** (re-installs cyberware at the Night Market); plus assorted flavor.
+
+### Added
+- **RP emotes.** `emote <action>`, `me <action>`, and `:<action>` broadcast a
+  third-person action to the room (e.g. `me lights a cig` → "Wintermute lights a cig").
+
 ## [1.5.0] - 2026-06-24
 
 ### Changed
@@ -230,7 +252,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.6.0
 [1.5.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.5.0
 [1.4.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.4.0
 [1.3.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.3.0
