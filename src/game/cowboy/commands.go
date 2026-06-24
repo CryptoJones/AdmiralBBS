@@ -63,7 +63,14 @@ func (w *World) Command(p *Player, line string) (quit bool) {
 	case "quests", "missions", "bounties":
 		w.showQuests(p)
 	case "accept", "take":
-		w.accept(p, arg)
+		// A bare ACCEPT takes a pending crew invite; ACCEPT <#> claims a bounty.
+		if arg == "" && p.partyInvite != nil {
+			w.acceptInvite(p)
+		} else {
+			w.accept(p, arg)
+		}
+	case "decline":
+		w.declineInvite(p)
 	case "claim", "turnin":
 		w.claim(p)
 	case "run", "exec":
@@ -72,6 +79,8 @@ func (w *World) Command(p *Player, line string) (quit bool) {
 		w.listPrograms(p)
 	case "group", "crew":
 		w.group(p, arg)
+	case "invite":
+		w.invite(p, arg)
 	case "leave", "ungroup":
 		w.leaveParty(p)
 	case "gsay", "crewchat", "party":
@@ -249,7 +258,8 @@ func helpText() string {
 		"  inventory (i)   — what you're carrying\r\n" +
 		"  quests          — fixer bounty board (at a shop); accept <#> / claim\r\n" +
 		"  programs / run <name> — netrun demons (scalpel/hammer/leech/mirror/medic)\r\n" +
-		"  group <runner>  — crew up (shared XP in-room); gsay <msg>; leave\r\n" +
+		"  invite <runner> — invite to your crew (leader only); they ACCEPT/DECLINE\r\n" +
+		"  group / crew     — show your crew (shared XP in-room); gsay <msg>; leave\r\n" +
 		"  leaderboard     — top runners by level\r\n" +
 		"  quit            — jack out\r\n" +
 		style(dim, "  In the Net, ATTACK breaches ICE using Intelligence and spends RAM\r\n"+

@@ -174,10 +174,15 @@ func (w *World) Disconnect(p *Player) {
 		p.fighting.target = nil
 	}
 	p.pvpTarget = nil
+	p.partyInvite = nil
 	for _, other := range w.players { // anyone duelling the leaver disengages
 		if other.pvpTarget == p {
 			other.pvpTarget = nil
 			other.send(style(dim, p.Name+" jacked out — your duel ends.") + crlf)
+		}
+		if other.partyInvite == p { // pending invites from the leaver expire
+			other.partyInvite = nil
+			other.send(style(dim, p.Name+"'s crew invite expires.") + crlf)
 		}
 	}
 	w.dropFromParty(p)
