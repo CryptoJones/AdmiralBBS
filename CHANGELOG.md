@@ -13,6 +13,17 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.4] - 2026-06-24
+
+### Fixed
+- **Console Cowboy door: spurious extra prompt / input stall.** The terminal
+  line reader peeked for a CRLF partner with a *blocking* read, so an
+  interactive lone CR/LF (one keystroke at a time) could strand a half-pair that
+  the next read returned as a blank line — printing a second prompt — or block
+  waiting for a partner byte that never arrived. It now only consumes a paired
+  terminator when one is already buffered. (Batch tests never hit this because
+  they send all bytes at once; added an `io.Pipe` regression test that does.)
+
 ## [1.0.3] - 2026-06-24
 
 ### Fixed
@@ -87,7 +98,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.4
 [1.0.3]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.3
 [1.0.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.2
 [1.0.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.1

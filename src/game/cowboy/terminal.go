@@ -22,10 +22,17 @@ func ReadLine(r *bufio.Reader, echo func(string)) (string, error) {
 		}
 		switch b {
 		case '\r', '\n':
-			// Swallow a paired LF/CR so CRLF doesn't read as a blank line.
-			if next, e := r.ReadByte(); e == nil {
-				if (b == '\r' && next != '\n') || (b == '\n' && next != '\r') {
-					_ = r.UnreadByte()
+			// Swallow a paired CRLF/LFCR ONLY if the partner byte is already
+			// buffered. Peeking with a blocking ReadByte() here is the bug it
+			// replaces: on an interactive lone CR/LF (one keystroke), the peek
+			// would block waiting for a byte that never comes, or strand a
+			// half-pair that the next read returns as a spurious blank line ->
+			// an extra prompt. Buffered() never blocks.
+			if r.Buffered() > 0 {
+				if next, e := r.ReadByte(); e == nil {
+					if !((b == '\r' && next == '\n') || (b == '\n' && next == '\r')) {
+						_ = r.UnreadByte()
+					}
 				}
 			}
 			if echo != nil {
