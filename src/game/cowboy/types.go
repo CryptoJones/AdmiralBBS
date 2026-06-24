@@ -20,9 +20,12 @@ type Player struct {
 	Intelligence int // (flavor + future deck mechanics)
 	WeaponBonus  int // from a purchased weapon (e.g. ICE-breaker)
 	WeaponName   string
+	RAM          int // netrun resource: powers breaches in the Net; regenerates out of combat
+	DeckBonus    int // bonus MaxRAM from a purchased cyberdeck (permanent)
 	Inv          map[string]int // item name -> qty
 	Quests       map[string]int // active questID -> kills so far (>= Count means ready to claim)
-	fighting     *Mob           // current combat target (nil = not in combat)
+	fighting     *Mob           // current mob target (nil = not in mob combat)
+	pvpTarget    *Player        // current PvP target in the Net (nil = not duelling)
 	out          func(string)   // output sink (set by the server; nil-safe via send)
 }
 
@@ -47,8 +50,9 @@ type MobTemplate struct {
 	AC         int // armor class (to-hit difficulty + light damage soak)
 	XP         int
 	Eddies     int
-	Aggressive bool // attacks players on sight
+	Aggressive bool   // attacks players on sight
 	Home       string
+	Next       string // multi-stage ICE: on "death" it morphs into this template instead of dying
 }
 
 // Mob is a live instance of a MobTemplate in the world.
@@ -78,6 +82,8 @@ type SavedPlayer struct {
 	Body, Reflexes, Intelligence int
 	WeaponBonus                  int
 	WeaponName                   string
+	RAM                          int
+	DeckBonus                    int
 	Room                         string
 	Inv                          map[string]int
 	Quests                       map[string]int

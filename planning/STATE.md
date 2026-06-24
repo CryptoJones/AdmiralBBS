@@ -27,6 +27,14 @@ with Intelligence. Mechanics grounded in research (MajorMUD/LORD + CP2020/GURPS)
 Load-tested at 50 concurrent unique players in one world. See
 [`docs/CONSOLE_COWBOY.md`](CONSOLE_COWBOY.md).
 
+**S023 (Console Cowboy — netrun depth, 2026-06-24)** — three follow-ons:
+RAM/cyberdeck resource for breaching (breaches spend RAM; sputter when empty;
+ram-chips refill, cyberdeck raises the cap; shown in the NET prompt); a deeper
+Net (Grid Node → Sentinel Lattice → Black ICE Fortress) with a **multi-stage
+Gauntlet ICE** that morphs white shell → black core → lethal lock; and **PvP
+netrunning** — duel other runners in the deep Net, loser flatlines and winner
+siphons eddies. All persisted and tested.
+
 **S013 (file-library hardening + CI green)** — landed on `main @ e9d0dfd`.
 Atomic per-user upload quota (closes the TOCTOU race), duplicate-filename
 rejection, file-area search/sort/filter/delete, XMODEM upload byte-cap, and
