@@ -13,6 +13,16 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.5] - 2026-06-24
+
+### Fixed
+- **Console Cowboy: the multi-stage Gauntlet ICE respawned into the void.** After
+  it was beaten, the mob template stayed mutated to its final form (which has no
+  home room), so it respawned as the lethal lock into room "" and never returned
+  to the Sentinel Lattice. Mobs now remember their origin template and reset to
+  it on respawn. (Regression test beats the gauntlet and asserts the first form
+  reappears in the Lattice.)
+
 ## [1.0.4] - 2026-06-24
 
 ### Fixed
@@ -98,7 +108,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.5
 [1.0.4]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.4
 [1.0.3]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.3
 [1.0.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.2

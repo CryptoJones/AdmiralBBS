@@ -305,6 +305,7 @@ func (w *World) respawnDead() {
 		m.respawnIn--
 		if m.respawnIn <= 0 {
 			m.dead = false
+			m.tmpl = m.origin // reset multi-stage ICE back to its first form
 			m.HP = m.tmpl.HP
 			m.RoomID = m.tmpl.Home
 			m.target = nil

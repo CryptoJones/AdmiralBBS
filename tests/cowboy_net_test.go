@@ -81,6 +81,41 @@ func TestCowboyMultiStageICE(t *testing.T) {
 	}
 }
 
+// After the multi-stage Gauntlet ICE is fully beaten, it must respawn back in
+// the Sentinel Lattice as its FIRST form — not vanish into the void (the bug:
+// the morphed template had no home room).
+func TestCowboyGauntletRespawnsAsFirstForm(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	w.SetRoll(alwaysHit)
+	out, buf := sink()
+	p := w.Connect("Case", out)
+	routeToNet(w, p)
+	w.Command(p, "down") // ice_wall
+	p.Intelligence, p.MaxHP, p.RAM = 60, 100000, 100000
+	p.HP = p.MaxHP
+
+	// Beat the whole gauntlet (final stage awards 700 XP -> a level-up).
+	w.Command(p, "attack gauntlet")
+	for i := 0; i < 120 && p.Level == 1; i++ {
+		w.Command(p, "attack gauntlet")
+		w.Tick()
+	}
+	if p.Level == 1 {
+		t.Fatal("never finished the gauntlet")
+	}
+	mark := buf.Len()
+
+	// Tick past the respawn cooldown; the player is still in the Lattice, so the
+	// reinitialize broadcast (in ice_wall) reaches them with the FIRST-form name.
+	for i := 0; i < 30; i++ {
+		w.Tick()
+	}
+	after := buf.String()[mark:]
+	if !strings.Contains(after, "white shell") {
+		t.Fatalf("gauntlet should respawn as its first form in the Lattice; post-kill output:\n%s", lastLines(after))
+	}
+}
+
 func TestCowboyPvPDuel(t *testing.T) {
 	w := cowboy.NewWorld(cowboy.NewMemStore())
 	w.SetRoll(alwaysHit)
