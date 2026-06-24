@@ -25,6 +25,8 @@ var (
 	ErrNoStart = errors.New("xfer: receiver did not start")
 	// ErrNoAck means the peer stopped acknowledging.
 	ErrNoAck = errors.New("xfer: no acknowledgement from peer")
+	// ErrTooBig means the upload exceeded the allowed size mid-transfer.
+	ErrTooBig = errors.New("xfer: upload exceeds the size limit")
 )
 
 const maxRetries = 10
@@ -142,8 +144,9 @@ func sendBlock(rw io.ReadWriter, block byte, chunk []byte, useCRC bool) error {
 }
 
 // Receive accepts an XMODEM-CRC upload and returns the data (trailing SUB
-// padding trimmed). It drives CRC mode by sending 'C'.
-func Receive(rw io.ReadWriter) ([]byte, error) {
+// padding trimmed). It drives CRC mode by sending 'C'. maxBytes bounds the
+// accepted size so a hostile sender can't exhaust memory (<=0 => no limit).
+func Receive(rw io.ReadWriter, maxBytes int) ([]byte, error) {
 	if _, err := rw.Write([]byte{crc}); err != nil {
 		return nil, err
 	}
@@ -179,6 +182,10 @@ func Receive(rw io.ReadWriter) ([]byte, error) {
 			case goodHdr && goodCRC && hdr[0] == expected:
 				out = append(out, data...)
 				expected++
+				if maxBytes > 0 && len(out) > maxBytes {
+					rw.Write([]byte{can, can}) // abort the sender
+					return nil, ErrTooBig
+				}
 				rw.Write([]byte{ack})
 			case goodHdr && hdr[0] == expected-1:
 				rw.Write([]byte{ack}) // duplicate block; re-ACK, don't append

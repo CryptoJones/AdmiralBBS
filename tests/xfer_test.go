@@ -21,7 +21,7 @@ func TestXmodemRoundTrip(t *testing.T) {
 		got := make(chan []byte, 1)
 		errc := make(chan error, 2)
 		go func() {
-			data, err := xfer.Receive(b)
+			data, err := xfer.Receive(b, 0)
 			if err != nil {
 				errc <- err
 				return

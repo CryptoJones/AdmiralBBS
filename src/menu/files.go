@@ -54,21 +54,33 @@ func RunFiles(s *session.Session, st *store.Store, u *store.User) error {
 }
 
 func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *store.FileArea, handles *handleCache) error {
+	sortBy := "newest"
+	var listed []*store.FileEntry // non-nil => active search/filter result
+	var header string
 	for {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
+
+		files := listed
+		if files == nil {
+			var err error
+			files, err = st.Files().ListSorted(area.ID, sortBy)
+			if err != nil {
+				return err
+			}
+		}
+
 		w.Clear()
 		w.Color(screen.Cyan)
 		w.Print("Files: ")
 		w.SafePrint(area.Name)
-		w.Print("\r\n")
+		w.Printf("   (%s)\r\n", sortBy)
 		w.Reset()
-		files, err := st.Files().ListByArea(area.ID)
-		if err != nil {
-			return err
+		if header != "" {
+			w.ColorLine(screen.Blue, header)
 		}
 		if len(files) == 0 {
-			w.Line("  (no files yet — be the first to upload)")
+			w.Line("  (no files)")
 		}
 		for i, f := range files {
 			w.Color(screen.Yellow)
@@ -76,12 +88,12 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 			w.Color(screen.White)
 			w.SafePrint(f.Filename)
 			w.Reset()
-			w.Printf("  %s  (%dx)  ", humanSize(f.SizeBytes), f.DownloadCount)
+			w.Printf("  %s (%dx) by %s  ", humanSize(f.SizeBytes), f.DownloadCount, handles.handle(f.UploaderID))
 			w.SafePrint(firstLine(f.Description))
 			w.Print("\r\n")
 		}
 		w.Color(screen.Green)
-		w.Print("\r\n[#] download  [U]pload  [Q]uit: ")
+		w.Print("\r\n[#] download  [U]pload  [S]earch  [B] by user  [R] sort  [K] delete  [C]lear  [Q]uit: ")
 		w.Reset()
 		in, err := s.ReadLine()
 		if err != nil {
@@ -92,8 +104,59 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 		case in == "" || strings.EqualFold(in, "q"):
 			return nil
 		case strings.EqualFold(in, "u"):
+			listed, header = nil, ""
 			if err := uploadFile(s, st, u, area.ID); err != nil {
 				return err
+			}
+		case strings.EqualFold(in, "c"):
+			listed, header = nil, ""
+		case strings.EqualFold(in, "r"):
+			sortBy = nextFileSort(sortBy)
+			listed, header = nil, ""
+		case strings.EqualFold(in, "s"):
+			w.Color(screen.Green)
+			w.Print("\r\nSearch text: ")
+			w.Reset()
+			q, _ := s.ReadLine()
+			if q = strings.TrimSpace(q); q != "" {
+				res, serr := st.Files().Search(area.ID, q)
+				if serr != nil {
+					return serr
+				}
+				listed, header = res, fmt.Sprintf("search %q — %d hit(s)", q, len(res))
+			}
+		case strings.EqualFold(in, "b"):
+			w.Color(screen.Green)
+			w.Print("\r\nFilter by uploader handle: ")
+			w.Reset()
+			h, _ := s.ReadLine()
+			if target, terr := st.Users().ByHandle(strings.TrimSpace(h)); terr == nil {
+				res, ferr := st.Files().ByUploader(area.ID, target.ID)
+				if ferr != nil {
+					return ferr
+				}
+				listed, header = res, fmt.Sprintf("by %s — %d file(s)", target.Handle, len(res))
+			} else {
+				w.ColorLine(screen.Red, "no such user")
+			}
+		case strings.EqualFold(in, "k"):
+			w.Color(screen.Green)
+			w.Print("\r\nDelete file # (blank to cancel): ")
+			w.Reset()
+			ks, _ := s.ReadLine()
+			if n, perr := strconv.Atoi(strings.TrimSpace(ks)); perr == nil && n >= 1 && n <= len(files) {
+				f := files[n-1]
+				if f.UploaderID == u.ID || u.AccessLevel >= CoSysOpLevel {
+					if derr := st.Files().Delete(f.ID); derr != nil {
+						w.ColorLine(screen.Red, "delete failed")
+					} else {
+						s.Activity("delete-file", f.Filename)
+						listed, header = nil, ""
+					}
+				} else {
+					w.ColorLine(screen.Red, "you can only delete your own files")
+					_, _ = s.ReadKey()
+				}
 			}
 		default:
 			if n, perr := strconv.Atoi(in); perr == nil && n >= 1 && n <= len(files) {
@@ -102,6 +165,21 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 				}
 			}
 		}
+	}
+}
+
+func nextFileSort(cur string) string {
+	switch cur {
+	case "newest":
+		return "oldest"
+	case "oldest":
+		return "name"
+	case "name":
+		return "size"
+	case "size":
+		return "downloads"
+	default:
+		return "newest"
 	}
 }
 
@@ -172,7 +250,7 @@ func uploadFile(s *session.Session, st *store.Store, u *store.User, areaID int64
 	var content []byte
 	if toLower(mode) == 'x' {
 		w.Line("\r\nStart your XMODEM send now...")
-		data, xerr := xfer.Receive(s.Raw())
+		data, xerr := xfer.Receive(s.Raw(), store.MaxFileBytes)
 		if xerr != nil {
 			w.ColorLine(screen.Red, "\r\nupload failed: "+xerr.Error())
 			return nil
@@ -198,6 +276,8 @@ func uploadFile(s *session.Session, st *store.Store, u *store.User, areaID int64
 			w.ColorLine(screen.Red, "too large — limit is 10 MiB")
 		} else if err == store.ErrQuotaExceeded {
 			w.ColorLine(screen.Red, "over your storage quota (100 MiB) — delete some files first")
+		} else if err == store.ErrDuplicateName {
+			w.ColorLine(screen.Red, "a file with that name already exists here — delete it first to replace")
 		} else {
 			w.ColorLine(screen.Red, "upload failed: "+err.Error())
 		}

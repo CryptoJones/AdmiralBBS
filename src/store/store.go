@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"admiralbbs/src/crypto"
 	_ "modernc.org/sqlite"
@@ -26,7 +27,8 @@ var migrationsFS embed.FS
 type Store struct {
 	db       *sql.DB
 	vault    *crypto.Vault
-	filesDir string // sealed file-library blobs live here
+	filesDir string     // sealed file-library blobs live here
+	uploadMu sync.Mutex // serializes file uploads so the quota check is atomic
 }
 
 // Open opens (creating if needed) the SQLite database at path with the agreed

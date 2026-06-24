@@ -22,6 +22,9 @@ var ErrTooLarge = errors.New("file exceeds the size limit")
 // ErrQuotaExceeded is returned when an upload would exceed the user's quota.
 var ErrQuotaExceeded = errors.New("upload would exceed your storage quota")
 
+// ErrDuplicateName is returned when a file of that name already exists in the area.
+var ErrDuplicateName = errors.New("a file with that name already exists in this area")
+
 // FileArea is a download area in the file library.
 type FileArea struct {
 	ID             int64
@@ -103,6 +106,19 @@ func (r *Files) Add(areaID, uploaderID int64, filename, description string, cont
 	if int64(len(content)) > MaxFileBytes {
 		return nil, ErrTooLarge
 	}
+	// Serialize uploads so the quota check + insert is atomic — otherwise two
+	// concurrent uploads by one user both pass the check and blow the quota.
+	r.st.uploadMu.Lock()
+	defer r.st.uploadMu.Unlock()
+	// Reject a duplicate filename in the same area (case-insensitive) — covers
+	// re-uploading the same file; delete the old one to replace it.
+	var dup int
+	if err := r.st.db.QueryRow(`SELECT COUNT(*) FROM file_entry WHERE area_id = ? AND filename = ? COLLATE NOCASE`, areaID, filename).Scan(&dup); err != nil {
+		return nil, err
+	}
+	if dup > 0 {
+		return nil, ErrDuplicateName
+	}
 	used, err := r.UserBytes(uploaderID)
 	if err != nil {
 		return nil, err
@@ -170,6 +186,61 @@ func (r *Files) UserBytes(uploaderID int64) (int64, error) {
 	var total sql.NullInt64
 	err := r.st.db.QueryRow(`SELECT COALESCE(SUM(size_bytes), 0) FROM file_entry WHERE uploader_id = ?`, uploaderID).Scan(&total)
 	return total.Int64, err
+}
+
+// ListSorted lists files by name, date, size, or downloads. Filenames and
+// descriptions are NOT encrypted, so these are direct SQL (unlike board search).
+func (r *Files) ListSorted(areaID int64, by string) ([]*FileEntry, error) {
+	order := "id DESC"
+	switch by {
+	case "name":
+		order = "filename COLLATE NOCASE ASC"
+	case "size":
+		order = "size_bytes DESC"
+	case "downloads":
+		order = "download_count DESC"
+	case "oldest":
+		order = "id ASC"
+	}
+	return r.listFiles(`SELECT `+fileCols+` FROM file_entry WHERE area_id = ? ORDER BY `+order, areaID)
+}
+
+// Search returns files whose filename or description matches query (SQL LIKE,
+// case-insensitive — these fields are plaintext).
+func (r *Files) Search(areaID int64, query string) ([]*FileEntry, error) {
+	like := "%" + query + "%"
+	return r.listFiles(`SELECT `+fileCols+` FROM file_entry WHERE area_id = ? AND (filename LIKE ? OR description LIKE ?) ORDER BY id DESC`, areaID, like, like)
+}
+
+// ByUploader lists an area's files from one uploader.
+func (r *Files) ByUploader(areaID, uploaderID int64) ([]*FileEntry, error) {
+	return r.listFiles(`SELECT `+fileCols+` FROM file_entry WHERE area_id = ? AND uploader_id = ? ORDER BY id DESC`, areaID, uploaderID)
+}
+
+func (r *Files) listFiles(query string, args ...any) ([]*FileEntry, error) {
+	rows, err := r.st.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*FileEntry
+	for rows.Next() {
+		f, err := r.scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// Delete removes a file's row and its blob. Only the uploader or a SysOp should
+// be allowed to call this (enforced by the menu).
+func (r *Files) Delete(id int64) error {
+	if _, err := r.st.db.Exec(`DELETE FROM file_entry WHERE id = ?`, id); err != nil {
+		return err
+	}
+	return os.Remove(r.blobPath(id))
 }
 
 // ByID fetches one file's metadata.
