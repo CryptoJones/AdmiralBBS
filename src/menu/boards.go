@@ -192,8 +192,15 @@ func readMessage(s *session.Session, st *store.Store, u *store.User, m *store.Me
 		w.Print("\r\n")
 	}
 
+	own := m.AuthorID == u.ID
 	w.Color(screen.Green)
-	w.Print("\r\n[R]eply  [B]lock author  re[P]ort  [Q]uit: ")
+	if own {
+		w.Print("\r\n[R]eply  [E]dit  [D]elete  re[P]ort  [Q]uit: ")
+	} else if u.AccessLevel >= CoSysOpLevel {
+		w.Print("\r\n[R]eply  [D]elete  [B]lock author  re[P]ort  [Q]uit: ")
+	} else {
+		w.Print("\r\n[R]eply  [B]lock author  re[P]ort  [Q]uit: ")
+	}
 	w.Reset()
 	key, err := s.ReadKey()
 	if err != nil {
@@ -202,6 +209,20 @@ func readMessage(s *session.Session, st *store.Store, u *store.User, m *store.Me
 	switch toLower(key) {
 	case 'r':
 		return compose(s, st, u, m.AreaID, &m.ID)
+	case 'e':
+		if own {
+			return editMessage(s, st, u, m, w)
+		}
+	case 'd':
+		if own || u.AccessLevel >= CoSysOpLevel {
+			if err := st.Messages().Delete(m.ID); err != nil {
+				w.ColorLine(screen.Red, "could not delete")
+			} else {
+				s.Activity("delete-message", firstLine(m.Subject))
+				w.ColorLine(screen.Cyan, "\r\nDeleted.")
+				_, _ = s.ReadKey()
+			}
+		}
 	case 'b':
 		if m.AuthorID == u.ID {
 			break
@@ -232,6 +253,45 @@ func hideBlocked(st *store.Store, viewerID int64, msgs []*store.Message) []*stor
 		}
 	}
 	return kept
+}
+
+// editMessage lets an author rewrite their own post's subject and body. A blank
+// entry keeps the existing value.
+func editMessage(s *session.Session, st *store.Store, u *store.User, m *store.Message, w *screen.Writer) error {
+	w.Color(screen.Green)
+	w.Print("\r\nNew subject (blank = keep): ")
+	w.Reset()
+	subj, err := s.ReadLine()
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(subj) == "" {
+		subj = m.Subject
+	}
+	w.Line("New body. End with a single '.' on its own line (blank body = keep):")
+	var lines []string
+	for {
+		line, err := s.ReadLine()
+		if err != nil {
+			return err
+		}
+		if line == "." {
+			break
+		}
+		lines = append(lines, line)
+	}
+	body := m.Body
+	if len(lines) > 0 {
+		body = strings.Join(lines, "\n")
+	}
+	if err := st.Messages().Edit(m.ID, u.ID, subj, body); err != nil {
+		w.ColorLine(screen.Red, "could not edit")
+		return nil
+	}
+	s.Activity("edit-message", firstLine(subj))
+	w.ColorLine(screen.Cyan, "Updated.")
+	_, _ = s.ReadKey()
+	return nil
 }
 
 func compose(s *session.Session, st *store.Store, u *store.User, areaID int64, parentID *int64) error {

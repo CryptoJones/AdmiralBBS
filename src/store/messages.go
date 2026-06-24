@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+// ErrNotOwner means an edit/delete was attempted on content the caller doesn't
+// own (and isn't otherwise authorised for).
+var ErrNotOwner = errors.New("store: not the owner of this item")
+
 // MessageArea is a message board ("base"). Tables already exist from migration 001.
 type MessageArea struct {
 	ID             int64
@@ -111,6 +115,37 @@ func (r *Messages) Post(areaID, authorID int64, parentID *int64, subject, body s
 	}
 	id, _ := res.LastInsertId()
 	return &Message{ID: id, AreaID: areaID, AuthorID: authorID, ParentID: parentID, Subject: subject, Body: body, PostedAt: now}, nil
+}
+
+// Edit re-seals and updates a message's subject/body, but only if authorID owns
+// it (so a caller can't edit someone else's post). Returns ErrNotOwner if the
+// id exists but belongs to another author.
+func (r *Messages) Edit(id, authorID int64, subject, body string) error {
+	encSubj, err := r.st.seal(subject)
+	if err != nil {
+		return err
+	}
+	encBody, err := r.st.seal(body)
+	if err != nil {
+		return err
+	}
+	res, err := r.st.db.Exec(
+		`UPDATE message SET subject = ?, body = ? WHERE id = ? AND author_id = ?`,
+		encSubj, encBody, id, authorID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotOwner
+	}
+	return nil
+}
+
+// Delete removes a message and any direct replies to it. Ownership/authority is
+// the caller's responsibility (author or SysOp) — enforced in the menu layer.
+func (r *Messages) Delete(id int64) error {
+	_, err := r.st.db.Exec(`DELETE FROM message WHERE id = ? OR parent_id = ?`, id, id)
+	return err
 }
 
 const messageCols = `id, area_id, author_id, parent_id, subject, body, posted_at`
