@@ -18,10 +18,33 @@ type World struct {
 	mobs         []*Mob
 	players      map[int]*Player
 	byName       map[string]*Player
+	corpses      []*Corpse // dropped sleeves awaiting recovery (in-memory; not persisted)
 	nextID       int
 	store        Persistence
 	roll         func(n int) int // returns 0..n-1; injectable for tests
 	respawnTicks int
+}
+
+// corpsesIn returns the sleeves lying in a room.
+func (w *World) corpsesIn(roomID string) []*Corpse {
+	var out []*Corpse
+	for _, c := range w.corpses {
+		if c.RoomID == roomID {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// removeCorpsesIn drops all corpses in a room from the world (after they're looted).
+func (w *World) removeCorpsesIn(roomID string) {
+	out := w.corpses[:0]
+	for _, c := range w.corpses {
+		if c.RoomID != roomID {
+			out = append(out, c)
+		}
+	}
+	w.corpses = out
 }
 
 // NewWorld builds the world from the static content and spawns initial mobs.

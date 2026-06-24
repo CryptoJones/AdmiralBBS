@@ -268,8 +268,37 @@ func (w *World) flatline(p *Player, killer *Mob) {
 	}
 	p.fighting = nil
 	p.pvpTarget = nil
+	w.dropCorpse(p)
 	w.passLeadershipOnDeath(p)
 	w.respawnPlayer(p, fee)
+}
+
+// dropCorpse leaves the dead runner's old sleeve where they fell, holding all
+// the gear the fresh clone woke up without: every inventory item PLUS their
+// cyberware (weapon + deck), which is stripped from the clone. The corpse stays
+// until someone loots it. Must run before respawnPlayer (which moves the room).
+func (w *World) dropCorpse(p *Player) {
+	loot := map[string]int{}
+	for k, v := range p.Inv {
+		loot[k] = v
+	}
+	p.Inv = map[string]int{}
+	if p.WeaponName != "" && p.WeaponBonus > 0 {
+		loot[p.WeaponName]++ // weapon implant stays with the old sleeve
+		p.WeaponName, p.WeaponBonus = "", 0
+	}
+	if p.DeckBonus > 0 {
+		loot["cyberdeck"]++ // deck implant stays with the old sleeve
+		p.DeckBonus = 0
+		if p.RAM > maxRAM(p) {
+			p.RAM = maxRAM(p)
+		}
+	}
+	if len(loot) == 0 {
+		return
+	}
+	w.corpses = append(w.corpses, &Corpse{Owner: p.Name, RoomID: p.RoomID, Loot: loot})
+	w.broadcast(p.RoomID, nil, style(dim, p.Name+"'s flatlined sleeve crumples to the ground, gear and all. (LOOT)")+crlf)
 }
 
 // passLeadershipOnDeath hands the crew to the longest-tenured surviving member
@@ -298,6 +327,7 @@ func (w *World) pvpFlatline(winner, loser *Player) {
 	winner.pvpTarget = nil
 	loser.pvpTarget = nil
 	loser.fighting = nil
+	w.dropCorpse(loser)
 	w.passLeadershipOnDeath(loser)
 	w.respawnPlayer(loser, loot)
 }

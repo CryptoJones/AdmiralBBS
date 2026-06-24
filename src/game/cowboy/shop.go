@@ -63,6 +63,56 @@ func (w *World) buy(p *Player, arg string) {
 	p.send(style(green, "Bought "+x.name+". You have "+itoa(p.Inv[x.name])+".") + crlf)
 }
 
+// consumeInv removes one of an item, deleting the key when it hits zero.
+func (w *World) consumeInv(p *Player, name string) {
+	p.Inv[name]--
+	if p.Inv[name] <= 0 {
+		delete(p.Inv, name)
+	}
+}
+
+// install wires salvaged cyberware (looted from a sleeve) back into your body —
+// only at a ripperdoc. Reuses the same upgrade rules as buying it new.
+func (w *World) install(p *Player, arg string) {
+	r := w.room(p.RoomID)
+	if r == nil || !r.Ripper {
+		p.send(style(dim, "You need a ripperdoc to wire in cyberware. (try the Night Market)") + crlf)
+		return
+	}
+	name := strings.ToLower(strings.TrimSpace(arg))
+	if name == "" {
+		p.send(style(dim, "Install what? (salvaged cyberware sits in your INVENTORY)") + crlf)
+		return
+	}
+	if p.Inv[name] <= 0 {
+		p.send(style(dim, "You're not carrying "+name+" to install.") + crlf)
+		return
+	}
+	x, ok := findWare(name)
+	if !ok || (x.bonus <= 0 && x.deck <= 0) {
+		p.send(style(dim, "That's not cyberware a ripperdoc can install.") + crlf)
+		return
+	}
+	if x.bonus > 0 {
+		if x.bonus <= p.WeaponBonus {
+			p.send(style(dim, "Your current weapon is already better — keep the "+name+" or GIVE it away.") + crlf)
+			return
+		}
+		p.WeaponBonus, p.WeaponName = x.bonus, x.name
+		w.consumeInv(p, name)
+		p.send(style(green, "The ripperdoc wires in the "+name+". Attack +"+itoa(x.bonus)+".") + crlf)
+		return
+	}
+	if x.deck <= p.DeckBonus {
+		p.send(style(dim, "Your current deck is already as good — keep the "+name+" or GIVE it away.") + crlf)
+		return
+	}
+	p.DeckBonus = x.deck
+	p.RAM = maxRAM(p) // freshly installed deck boots with full RAM
+	w.consumeInv(p, name)
+	p.send(style(green, "The ripperdoc installs the "+name+". Max RAM is now "+itoa(maxRAM(p))+".") + crlf)
+}
+
 func (w *World) use(p *Player, arg string) {
 	name := strings.ToLower(strings.TrimSpace(arg))
 	if name == "" {

@@ -13,6 +13,21 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.4.0] - 2026-06-24
+
+### Added
+- **Console Cowboy: corpse loot + ripperdoc cyberware re-install (Altered-Carbon
+  death, part 2).** When you flatline, your **old sleeve drops as a lootable
+  corpse** right where you fell, holding **all your inventory items plus your
+  cyberware** (weapon + cyberdeck) — which is **stripped from the fresh clone**.
+  - `loot` strips every flatlined sleeve in the room into your pack. **Open
+    recovery:** anyone can loot any sleeve (recover for a crewmate — or swipe it).
+    The corpse persists until looted.
+  - Recovered **cyberware must be re-installed at a ripperdoc** (`install <cyber>`,
+    at the **Night Market**) to work again; consumables are usable immediately.
+  - `give <item> <runner>` hands recovered gear back to a crewmate in the room.
+  - Corpses are in-memory world state (not persisted across a server restart).
+
 ## [1.3.0] - 2026-06-24
 
 ### Changed
@@ -203,7 +218,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.4.0
 [1.3.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.3.0
 [1.2.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.2.0
 [1.1.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.2

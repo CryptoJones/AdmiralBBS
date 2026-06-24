@@ -317,3 +317,74 @@ func TestCowboyLeaderDeathPassesLeadership(t *testing.T) {
 		t.Fatalf("leadership should pass to the surviving member; got:\n%s", b2.String())
 	}
 }
+
+// Altered-Carbon death loop: dying drops your old sleeve (items + cyberware) and
+// the clone wakes stripped; another runner can loot it, re-install the cyberware
+// at a ripperdoc, and give recovered gear back.
+func TestCowboyCorpseLootInstallGive(t *testing.T) {
+	w := cowboy.NewWorld(cowboy.NewMemStore())
+	w.SetRoll(alwaysHit)
+	o1, _ := sink()
+	victim := w.Connect("Case", o1)
+	o2, b2 := sink()
+	helper := w.Connect("Molly", o2)
+
+	// Victim kits up: weapon + cyberdeck + stimpaks.
+	victim.WeaponName, victim.WeaponBonus = "ice-breaker", 5
+	victim.DeckBonus = 8
+	victim.Inv["stimpak"] = 2
+
+	// Both into the back alley; the ganger flatlines the victim (HP 1).
+	for _, p := range []*cowboy.Player{victim, helper} {
+		w.Command(p, "out")
+		w.Command(p, "east")
+		w.Command(p, "north")
+	}
+	victim.HP = 1
+	w.Command(victim, "attack ganger")
+	for i := 0; i < 6 && victim.RoomID != "capsule"; i++ {
+		w.Tick()
+	}
+	if victim.RoomID != "capsule" {
+		t.Fatalf("victim should have re-sleeved; at %s", victim.RoomID)
+	}
+	// The fresh clone wakes stripped of gear AND cyberware.
+	if victim.WeaponBonus != 0 || victim.DeckBonus != 0 || len(victim.Inv) != 0 {
+		t.Fatalf("clone should wake stripped: wpn=%d deck=%d inv=%v", victim.WeaponBonus, victim.DeckBonus, victim.Inv)
+	}
+
+	// Helper (still in the alley) loots the sleeve.
+	b2.Reset()
+	w.Command(helper, "loot")
+	if helper.Inv["stimpak"] != 3 || helper.Inv["ice-breaker"] != 1 || helper.Inv["cyberdeck"] != 1 {
+		t.Fatalf("loot should recover gear+cyberware (helper had 1 stimpak): %v", helper.Inv)
+	}
+	if !strings.Contains(b2.String(), "Salvaged cyberware") {
+		t.Fatal("loot should flag salvaged cyberware")
+	}
+
+	// Install needs a ripperdoc — refused in the alley.
+	w.Command(helper, "install ice-breaker")
+	if helper.WeaponBonus != 0 {
+		t.Fatal("install must require a ripperdoc")
+	}
+	// To the Night Market (ripperdoc) and install.
+	w.Command(helper, "south") // -> the_sprawl
+	w.Command(helper, "south") // -> market (ripperdoc)
+	w.Command(helper, "install ice-breaker")
+	if helper.WeaponBonus != 5 || helper.WeaponName != "ice-breaker" || helper.Inv["ice-breaker"] != 0 {
+		t.Fatalf("ripperdoc install failed: bonus=%d inv=%v", helper.WeaponBonus, helper.Inv)
+	}
+
+	// Give a stimpak back to the victim (route the victim to the market first).
+	w.Command(victim, "out")
+	w.Command(victim, "east")
+	w.Command(victim, "south")
+	if victim.RoomID != "market" {
+		t.Fatalf("victim should reach the market, at %s", victim.RoomID)
+	}
+	w.Command(helper, "give stimpak Case")
+	if victim.Inv["stimpak"] != 1 || helper.Inv["stimpak"] != 2 {
+		t.Fatalf("give should transfer one stimpak: victim=%d helper=%d", victim.Inv["stimpak"], helper.Inv["stimpak"])
+	}
+}
