@@ -2,8 +2,10 @@ package tests
 
 import (
 	"bufio"
+	"io"
 	"strings"
 	"testing"
+	"time"
 
 	"admiralbbs/src/game/cowboy"
 )
@@ -31,6 +33,30 @@ func TestCowboyReadLine(t *testing.T) {
 			}
 		}
 	}
+}
+
+// Interactive Enter sends a lone CR (or LF) with nothing after it. ReadLine
+// must return immediately on it — NOT block peeking for a CRLF partner (the bug
+// that produced a hang / a spurious extra prompt in the door game).
+func TestCowboyReadLineLoneCRDoesNotBlock(t *testing.T) {
+	pr, pw := io.Pipe()
+	r := bufio.NewReader(pr)
+	go func() { pw.Write([]byte("l\r")); /* deliberately write nothing more */ }()
+
+	done := make(chan string, 1)
+	go func() {
+		line, _ := cowboy.ReadLine(r, nil)
+		done <- line
+	}()
+	select {
+	case got := <-done:
+		if got != "l" {
+			t.Fatalf("lone-CR line = %q, want %q", got, "l")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("ReadLine blocked on a lone CR (peeked for a CRLF partner that never came)")
+	}
+	pw.Close()
 }
 
 func TestCowboyReadLineEcho(t *testing.T) {
