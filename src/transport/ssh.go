@@ -21,7 +21,11 @@ import (
 // the SSH listener accepts any connection (dev/demo only).
 type Authenticator func(username string, key ssh.PublicKey) bool
 
-func ServeSSH(addr, hostKeyPath string, limits Limits, auth Authenticator, handle func(Conn)) error {
+// BanCheck reports whether a source IP (bare host) is banned and must be
+// dropped at accept time, before authentication. nil means "no banlist".
+type BanCheck func(ip string) bool
+
+func ServeSSH(addr, hostKeyPath string, limits Limits, auth Authenticator, banned BanCheck, handle func(Conn)) error {
 	signer, err := loadOrCreateHostKey(hostKeyPath)
 	if err != nil {
 		return err
@@ -50,6 +54,10 @@ func ServeSSH(addr, hostKeyPath string, limits Limits, auth Authenticator, handl
 			return err
 		}
 		ip := hostOf(raw.RemoteAddr())
+		if banned != nil && banned(ip) {
+			raw.Close() // banned source — drop before auth
+			continue
+		}
 		if !lm.acquire(ip) {
 			raw.Close()
 			continue

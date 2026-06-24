@@ -28,7 +28,7 @@ const (
 // ServeTelnet listens on addr and hands each accepted caller (as a Conn) to
 // handle in its own goroutine, subject to the session/per-IP caps in limits.
 // Plaintext by design — authenticity (and Telnet is apply-only).
-func ServeTelnet(addr string, limits Limits, handle func(Conn)) error {
+func ServeTelnet(addr string, limits Limits, banned BanCheck, handle func(Conn)) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -40,6 +40,10 @@ func ServeTelnet(addr string, limits Limits, handle func(Conn)) error {
 			return err
 		}
 		ip := hostOf(raw.RemoteAddr())
+		if banned != nil && banned(ip) {
+			raw.Close() // banned source — drop before anything else
+			continue
+		}
 		if !lm.acquire(ip) {
 			raw.Close() // over a cap; drop quietly
 			continue
