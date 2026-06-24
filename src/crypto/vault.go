@@ -121,6 +121,15 @@ func (v *Vault) Close() {
 	v.macKey = nil
 }
 
+// GenerateSalt returns a fresh random KDF salt (for key rotation).
+func GenerateSalt() ([]byte, error) {
+	salt := make([]byte, saltLen)
+	if _, err := rand.Read(salt); err != nil {
+		return nil, err
+	}
+	return salt, nil
+}
+
 // LoadOrCreateSalt reads the KDF salt from path, generating and persisting a
 // random one (0600) on first run. The salt is not secret; it only needs to be
 // stable per deployment so the same secret derives the same key.

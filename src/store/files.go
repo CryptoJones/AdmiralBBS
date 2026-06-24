@@ -9,11 +9,18 @@ import (
 	"time"
 )
 
-// MaxFileBytes caps a single upload to blunt disk-exhaustion (RISKS SEC-7).
-const MaxFileBytes = 10 << 20 // 10 MiB
+// MaxFileBytes caps a single upload; MaxUserBytes caps a user's total stored
+// bytes — both blunt disk-exhaustion (RISKS SEC-7).
+const (
+	MaxFileBytes = 10 << 20  // 10 MiB per file
+	MaxUserBytes = 100 << 20 // 100 MiB total per uploader
+)
 
 // ErrTooLarge is returned when an upload exceeds MaxFileBytes.
 var ErrTooLarge = errors.New("file exceeds the size limit")
+
+// ErrQuotaExceeded is returned when an upload would exceed the user's quota.
+var ErrQuotaExceeded = errors.New("upload would exceed your storage quota")
 
 // FileArea is a download area in the file library.
 type FileArea struct {
@@ -96,6 +103,13 @@ func (r *Files) Add(areaID, uploaderID int64, filename, description string, cont
 	if int64(len(content)) > MaxFileBytes {
 		return nil, ErrTooLarge
 	}
+	used, err := r.UserBytes(uploaderID)
+	if err != nil {
+		return nil, err
+	}
+	if used+int64(len(content)) > MaxUserBytes {
+		return nil, ErrQuotaExceeded
+	}
 	now := time.Now().UTC()
 	res, err := r.st.db.Exec(
 		`INSERT INTO file_entry (area_id, filename, path, size_bytes, description, uploader_id, uploaded_at)
@@ -149,6 +163,13 @@ func (r *Files) ListByArea(areaID int64) ([]*FileEntry, error) {
 		out = append(out, f)
 	}
 	return out, rows.Err()
+}
+
+// UserBytes returns the total bytes a user has uploaded (for the quota check).
+func (r *Files) UserBytes(uploaderID int64) (int64, error) {
+	var total sql.NullInt64
+	err := r.st.db.QueryRow(`SELECT COALESCE(SUM(size_bytes), 0) FROM file_entry WHERE uploader_id = ?`, uploaderID).Scan(&total)
+	return total.Int64, err
 }
 
 // ByID fetches one file's metadata.

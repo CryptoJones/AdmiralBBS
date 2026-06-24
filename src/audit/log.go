@@ -19,6 +19,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -210,6 +211,46 @@ func ReadAll(path string, vault *crypto.Vault) ([]Event, error) {
 		prev = mac
 	}
 	return events, sc.Err()
+}
+
+// Rekey re-seals and re-chains the entire audit trail from the old key to the
+// new key, in place (atomic rename). Used by the key-rotation runbook.
+func Rekey(path string, oldV, newV *crypto.Vault) error {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var out strings.Builder
+	prev := newV.MAC(nil, genesis)
+	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		ct, _, err := splitLine(line)
+		if err != nil {
+			return err
+		}
+		plain, err := oldV.Open(ct)
+		if err != nil {
+			return fmt.Errorf("rekey audit: cannot decrypt with old key: %w", err)
+		}
+		nct, err := newV.Seal(plain)
+		if err != nil {
+			return err
+		}
+		mac := newV.MAC(prev, nct)
+		out.WriteString(b64.EncodeToString(nct) + "." + b64.EncodeToString(mac) + "\n")
+		prev = mac
+	}
+	tmp := path + ".rekey.tmp"
+	if err := os.WriteFile(tmp, []byte(out.String()), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 func hmacEqual(a, b []byte) bool {
