@@ -13,6 +13,19 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.2] - 2026-06-24
+
+### Changed
+- **Login banner is now generated from the configured BBS name + tagline**
+  instead of a hardcoded "AdmiralBBS" logo, so a rebranded BBS shows *its own*
+  name on the welcome screen. A SysOp can still supply custom art via `-art`
+  (which overrides the generated banner).
+
+### Removed
+- The hardcoded "Proudly Made in Nebraska / 🌽" line from the **runtime** welcome
+  screen — that's the project's repo signature, not something to stamp on every
+  caller's login. It remains in the repo README. (`-art` now defaults to none.)
+
 ## [1.0.1] - 2026-06-24
 
 ### Added
@@ -66,6 +79,7 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.2
 [1.0.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.0
