@@ -18,14 +18,14 @@ type World struct {
 	mobs         []*Mob
 	players      map[int]*Player
 	byName       map[string]*Player
-	corpses      []*Corpse // dropped sleeves awaiting recovery (in-memory; not persisted)
+	corpses      []*Corpse // dropped bodys awaiting recovery (in-memory; not persisted)
 	nextID       int
 	store        Persistence
 	roll         func(n int) int // returns 0..n-1; injectable for tests
 	respawnTicks int
 }
 
-// corpsesIn returns the sleeves lying in a room.
+// corpsesIn returns the bodys lying in a room.
 func (w *World) corpsesIn(roomID string) []*Corpse {
 	var out []*Corpse
 	for _, c := range w.corpses {
@@ -305,7 +305,7 @@ func (w *World) checkLevelUp(p *Player) {
 		p.HP = p.MaxHP
 		p.send(style(neon, "*** UPLOAD COMPLETE — you reach level "+itoa(p.Level)+"! Stats boosted, HP restored. ***") + crlf)
 		if p.Level == MaxLevel {
-			p.send(style(gold, "*** You are MAXED — level "+itoa(MaxLevel)+", an elite console cowboy. The grid is yours. ***") + crlf)
+			p.send(style(gold, "*** You are MAXED — level "+itoa(MaxLevel)+", an elite cowboy. The grid is yours. ***") + crlf)
 		}
 	}
 	if p.Level >= MaxLevel {

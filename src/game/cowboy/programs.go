@@ -4,7 +4,7 @@ import "strings"
 
 // program is a netrun demon: a loadable, RAM-costed ability run with RUN <name>.
 // Damage programs are deliberate exploits — they auto-land (no to-hit roll) but
-// still respect the target's armor. Every netrunner carries the stock toolkit.
+// still respect the target's armor. Every runner carries the stock toolkit.
 type program struct {
 	id      string
 	name    string

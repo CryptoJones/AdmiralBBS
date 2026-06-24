@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Quest is a fixer bounty: kill Count of a target mob, then CLAIM at any fixer
+// Quest is a broker bounty: kill Count of a target mob, then CLAIM at any broker
 // (vendor room) for the reward. Bounties are repeatable.
 type Quest struct {
 	ID       string
@@ -22,7 +22,7 @@ var quests = []Quest{
 	{ID: "clear_alley", Name: "Clear the Back Alley", Target: "ganger", Count: 3, XP: 120, Eddies: 80, MinLevel: 1,
 		Desc: "Gangers are taxing the block. Drop 3 street gangers."},
 	{ID: "corp_sabotage", Name: "Corporate Sabotage", Target: "drone", Count: 2, XP: 200, Eddies: 150, MinLevel: 2,
-		Desc: "A rival corp wants deniable chaos. Wreck 2 security drones in Arasaki Plaza."},
+		Desc: "A rival corp wants deniable chaos. Wreck 2 security drones in Corporate Plaza."},
 	{ID: "break_ice", Name: "Break the Ice", Target: "white_ice", Count: 3, XP: 400, Eddies: 250, MinLevel: 3,
 		Desc: "Prove you can run. Destroy 3 White ICE sentinels in the Net."},
 	{ID: "ghost_machine", Name: "Ghost in the Machine", Target: "rogue_ai", Count: 1, XP: 1000, Eddies: 800, MinLevel: 5,
@@ -38,7 +38,7 @@ func questByID(id string) (Quest, bool) {
 	return Quest{}, false
 }
 
-// quests command: show the bounty board (at a fixer) plus your active progress.
+// quests command: show the bounty board (at a broker) plus your active progress.
 func (w *World) showQuests(p *Player) {
 	atFixer := w.atVendor(p)
 	if atFixer {
@@ -64,16 +64,16 @@ func (w *World) showQuests(p *Player) {
 		}
 		state := itoa(got) + "/" + itoa(q.Count)
 		if got >= q.Count {
-			state = style(gold, "READY — CLAIM at a fixer")
+			state = style(gold, "READY — CLAIM at a broker")
 		}
 		p.send("  " + style(green, q.Name) + style(dim, " ["+q.Target+"] ") + state + crlf)
 	}
 }
 
-// accept takes a bounty (only at a fixer).
+// accept takes a bounty (only at a broker).
 func (w *World) accept(p *Player, arg string) {
 	if !w.atVendor(p) {
-		p.send(style(dim, "Find a fixer (a vendor room) to take bounties.") + crlf)
+		p.send(style(dim, "Find a broker (a vendor room) to take bounties.") + crlf)
 		return
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(arg))
@@ -94,10 +94,10 @@ func (w *World) accept(p *Player, arg string) {
 	p.send(style(green, "Bounty accepted: ") + q.Name + style(dim, " — "+q.Desc) + crlf)
 }
 
-// claim turns in any completed bounties (at a fixer) for rewards.
+// claim turns in any completed bounties (at a broker) for rewards.
 func (w *World) claim(p *Player) {
 	if !w.atVendor(p) {
-		p.send(style(dim, "Return to a fixer (a vendor room) to claim bounties.") + crlf)
+		p.send(style(dim, "Return to a broker (a vendor room) to claim bounties.") + crlf)
 		return
 	}
 	claimed := 0
@@ -128,7 +128,7 @@ func (w *World) creditQuestKill(p *Player, mobID string) {
 		}
 		p.Quests[id] = got + 1
 		if p.Quests[id] >= q.Count {
-			p.send(style(gold, "Bounty objective complete: "+q.Name+" — CLAIM at a fixer.") + crlf)
+			p.send(style(gold, "Bounty objective complete: "+q.Name+" — CLAIM at a broker.") + crlf)
 		} else {
 			p.send(style(dim, "Bounty progress: "+q.Name+" "+itoa(p.Quests[id])+"/"+itoa(q.Count)) + crlf)
 		}

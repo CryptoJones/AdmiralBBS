@@ -169,7 +169,7 @@ func TestCowboyLeaderboard(t *testing.T) {
 	v := w2.Connect("Viewer", out)
 	w2.Command(v, "leaderboard")
 	s := buf.String()
-	if !strings.Contains(s, "TOP CONSOLE COWBOYS") || !strings.Contains(s, "Cid") || !strings.Contains(s, "Ace") {
+	if !strings.Contains(s, "TOP COWBOYS") || !strings.Contains(s, "Cid") || !strings.Contains(s, "Ace") {
 		t.Errorf("leaderboard output missing names:\n%s", lastLines(s))
 	}
 }

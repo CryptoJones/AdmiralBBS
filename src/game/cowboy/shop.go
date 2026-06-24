@@ -31,7 +31,7 @@ func (w *World) buy(p *Player, arg string) {
 		return
 	}
 	if p.Eddies < x.price {
-		p.send(style(red, "Not enough eddies (need €$"+itoa(x.price)+").") + crlf)
+		p.send(style(red, "Not enough scrip (need €$"+itoa(x.price)+").") + crlf)
 		return
 	}
 	p.Eddies -= x.price
@@ -71,12 +71,12 @@ func (w *World) consumeInv(p *Player, name string) {
 	}
 }
 
-// install wires salvaged cyberware (looted from a sleeve) back into your body —
-// only at a ripperdoc. Reuses the same upgrade rules as buying it new.
+// install wires salvaged cyberware (looted from a body) back into your body —
+// only at a Emergency Medic. Reuses the same upgrade rules as buying it new.
 func (w *World) install(p *Player, arg string) {
 	r := w.room(p.RoomID)
-	if r == nil || !r.Ripper {
-		p.send(style(dim, "You need a ripperdoc to wire in cyberware. (try the Night Market)") + crlf)
+	if r == nil || !r.Medic {
+		p.send(style(dim, "You need a Emergency Medic to wire in cyberware. (try the Night Market)") + crlf)
 		return
 	}
 	name := strings.ToLower(strings.TrimSpace(arg))
@@ -90,7 +90,7 @@ func (w *World) install(p *Player, arg string) {
 	}
 	x, ok := findWare(name)
 	if !ok || (x.bonus <= 0 && x.deck <= 0) {
-		p.send(style(dim, "That's not cyberware a ripperdoc can install.") + crlf)
+		p.send(style(dim, "That's not cyberware a Emergency Medic can install.") + crlf)
 		return
 	}
 	if x.bonus > 0 {
@@ -100,7 +100,7 @@ func (w *World) install(p *Player, arg string) {
 		}
 		p.WeaponBonus, p.WeaponName = x.bonus, x.name
 		w.consumeInv(p, name)
-		p.send(style(green, "The ripperdoc wires in the "+name+". Attack +"+itoa(x.bonus)+".") + crlf)
+		p.send(style(green, "The Emergency Medic wires in the "+name+". Attack +"+itoa(x.bonus)+".") + crlf)
 		return
 	}
 	if x.deck <= p.DeckBonus {
@@ -110,7 +110,7 @@ func (w *World) install(p *Player, arg string) {
 	p.DeckBonus = x.deck
 	p.RAM = maxRAM(p) // freshly installed deck boots with full RAM
 	w.consumeInv(p, name)
-	p.send(style(green, "The ripperdoc installs the "+name+". Max RAM is now "+itoa(maxRAM(p))+".") + crlf)
+	p.send(style(green, "The Emergency Medic installs the "+name+". Max RAM is now "+itoa(maxRAM(p))+".") + crlf)
 }
 
 func (w *World) use(p *Player, arg string) {

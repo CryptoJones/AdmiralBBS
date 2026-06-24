@@ -1,4 +1,4 @@
-// Package cowboy is the engine for "Console Cowboy 2026", a multiplayer
+// Package cowboy is the engine for "Chrome Circuit Cowboys", a multiplayer
 // cyberpunk MUD in the MajorMUD/Worldgroup tradition. It runs as a persistent
 // resident door: one shared world, many simultaneous players, bridged in by
 // AdmiralBBS. The engine itself is single-threaded and network-free — the
@@ -6,7 +6,7 @@
 // the engine is deterministic and unit-testable.
 package cowboy
 
-// Player is a connected console cowboy (netrunner).
+// Player is a connected cowboy (runner).
 type Player struct {
 	ID           int
 	Name         string
@@ -80,18 +80,18 @@ type Room struct {
 	Desc    string
 	Exits   map[string]string // direction -> room id
 	Vendor  bool              // a shop operates here
-	Ripper  bool              // a ripperdoc operates here — re-install salvaged cyberware
+	Medic  bool              // a Emergency Medic operates here — re-install salvaged cyberware
 	Private bool              // a per-runner capsule pod — occupants are isolated (no one shares it)
 	Safe    bool              // no-violence zone (outside the clone pods): a security drone flatlines PvP aggressors
 }
 
-// Corpse is a dead runner's old sleeve, left where they flatlined. It holds the
+// Corpse is a dead runner's old body, left where they flatlined. It holds the
 // gear (consumables + cyberware by ware name) the new clone woke up without.
 // It persists until looted; anyone may loot it (open recovery + risk).
 type Corpse struct {
 	Owner  string
 	RoomID string
-	Loot   map[string]int // ware name -> qty (consumables usable on loot; cyberware needs ripperdoc INSTALL)
+	Loot   map[string]int // ware name -> qty (consumables usable on loot; cyberware needs Emergency Medic INSTALL)
 }
 
 // SavedPlayer is the persisted slice of a Player (progress survives logout).

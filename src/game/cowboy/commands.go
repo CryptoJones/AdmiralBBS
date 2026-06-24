@@ -31,6 +31,12 @@ func (w *World) Command(p *Player, line string) (quit bool) {
 		w.sendPrompt(p)
 		return false
 	}
+	// ":<action>" is RP-emote shorthand (": waves" or ":waves").
+	if strings.HasPrefix(line, ":") {
+		w.emote(p, strings.TrimSpace(line[1:]))
+		w.sendPrompt(p)
+		return false
+	}
 	fields := strings.Fields(line)
 	cmd := strings.ToLower(fields[0])
 	arg := strings.TrimSpace(strings.TrimPrefix(line, fields[0]))
@@ -46,6 +52,8 @@ func (w *World) Command(p *Player, line string) (quit bool) {
 		w.lookText(p)
 	case "say", "'":
 		w.say(p, arg)
+	case "emote", "me", "em":
+		w.emote(p, arg)
 	case "who":
 		w.who(p)
 	case "score", "stats", "st", "sc":
@@ -154,8 +162,8 @@ func (w *World) lookText(p *Player) {
 	if r.Vendor {
 		p.send(style(gold, "A vendor terminal hums here. Type LIST.") + crlf)
 	}
-	if r.Ripper {
-		p.send(style(gold, "A ripperdoc's chair waits here. INSTALL salvaged cyberware.") + crlf)
+	if r.Medic {
+		p.send(style(gold, "A Emergency Medic's chair waits here. INSTALL salvaged cyberware.") + crlf)
 	}
 	// Exits.
 	var dirs []string
@@ -173,10 +181,23 @@ func (w *World) lookText(p *Player) {
 	for _, m := range w.liveMobsIn(p.RoomID) {
 		p.send(style(hot, m.tmpl.Name+" is here.") + crlf)
 	}
-	// Flatlined sleeves (corpses) waiting to be looted.
+	// Flatlined bodies (corpses) waiting to be looted.
 	for _, c := range w.corpsesIn(p.RoomID) {
-		p.send(style(dim, c.Owner+"'s flatlined sleeve lies here. (LOOT)") + crlf)
+		p.send(style(dim, c.Owner+"'s flatlined body lies here. (LOOT)") + crlf)
 	}
+}
+
+// emote broadcasts a freeform third-person action to the room, for the RP crowd:
+// EMOTE / ME / ":" + an action -> "Wintermute lights a cigarette."
+func (w *World) emote(p *Player, action string) {
+	action = strings.TrimSpace(action)
+	if action == "" {
+		p.send(style(dim, "Emote what? e.g. ME lights a cigarette (or :leans on the wall).") + crlf)
+		return
+	}
+	line := style(neon, p.Name+" "+action) + crlf
+	p.send(line)
+	w.broadcast(p.RoomID, p, line)
 }
 
 func (w *World) say(p *Player, msg string) {
@@ -203,7 +224,7 @@ func (w *World) who(p *Player) {
 func (w *World) score(p *Player) {
 	class := p.Class
 	if class == "" {
-		class = "console cowboy"
+		class = "cowboy"
 	}
 	p.send(crlf + style(neon, "== "+p.Name+" :: "+class+" ==") + crlf)
 	xpLine := "  Level " + itoa(p.Level) + "   XP " + itoa(p.XP) + "/" + itoa(xpToNext(p.Level))
@@ -223,7 +244,7 @@ func (w *World) score(p *Player) {
 		deck = "cyberdeck (+" + itoa(p.DeckBonus) + " max RAM)"
 	}
 	p.send("  Deck: " + deck + crlf)
-	p.send(style(gold, "  €$ "+itoa(p.Eddies)+" eddies") + crlf)
+	p.send(style(gold, "  €$ "+itoa(p.Eddies)+" scrip") + crlf)
 	if p.shieldTicks > 0 {
 		p.send(style(dim, "  Mirror shield: -"+itoa(p.shieldAmt)+" dmg for "+itoa(p.shieldTicks)+" more round(s)") + crlf)
 	}
@@ -235,7 +256,7 @@ func (w *World) score(p *Player) {
 
 func (w *World) inventory(p *Player) {
 	p.send(style(neon, "-- Inventory --") + crlf)
-	p.send(style(gold, "  €$ "+itoa(p.Eddies)+" eddies") + crlf)
+	p.send(style(gold, "  €$ "+itoa(p.Eddies)+" scrip") + crlf)
 	if len(p.Inv) == 0 {
 		p.send(style(dim, "  (no items)") + crlf)
 		return
@@ -280,13 +301,13 @@ func (w *World) goHome(p *Player) {
 	w.move(p, "in")
 }
 
-// loot strips every flatlined sleeve in the room into your pack. Items are
-// usable immediately; salvaged cyberware must be re-installed at a ripperdoc.
-// Open recovery: anyone can loot any sleeve (recover for a crewmate — or swipe it).
+// loot strips every flatlined body in the room into your pack. Items are
+// usable immediately; salvaged cyberware must be re-installed at a Emergency Medic.
+// Open recovery: anyone can loot any body (recover for a crewmate — or swipe it).
 func (w *World) loot(p *Player) {
 	cs := w.corpsesIn(p.RoomID)
 	if len(cs) == 0 {
-		p.send(style(dim, "There's no flatlined sleeve to loot here.") + crlf)
+		p.send(style(dim, "There's no flatlined body to loot here.") + crlf)
 		return
 	}
 	total := 0
@@ -305,15 +326,15 @@ func (w *World) loot(p *Player) {
 	}
 	w.removeCorpsesIn(p.RoomID)
 	if total == 0 {
-		p.send(style(dim, "The sleeve is already stripped bare.") + crlf)
+		p.send(style(dim, "The body is already stripped bare.") + crlf)
 		return
 	}
-	p.send(style(green, "You strip the sleeve — its gear is now in your pack.") + crlf)
+	p.send(style(green, "You strip the body — its gear is now in your pack.") + crlf)
 	if len(cyber) > 0 {
 		p.send(style(neon, "Salvaged cyberware: ") + strings.Join(cyber, ", ") +
-			style(dim, " — INSTALL it at a ripperdoc to use it again.") + crlf)
+			style(dim, " — INSTALL it at a Emergency Medic to use it again.") + crlf)
 	}
-	w.broadcast(p.RoomID, p, style(dim, p.Name+" loots a flatlined sleeve.")+crlf)
+	w.broadcast(p.RoomID, p, style(dim, p.Name+" loots a flatlined body.")+crlf)
 }
 
 // give hands an inventory item to another runner in the room (e.g. returning a
@@ -342,18 +363,19 @@ func (w *World) give(p *Player, arg string) {
 }
 
 func helpText() string {
-	return crlf + style(neon, "== Console Cowboy 2026 — commands ==") + crlf +
+	return crlf + style(neon, "== Chrome Circuit Cowboys — commands ==") + crlf +
 		"  Movement : N S E W U D  (or north/south/...)\r\n" +
 		"  home / in / out — your private capsule pod (off Neon Alley); spawn-safe\r\n" +
 		"  look (l)        — examine your location\r\n" +
 		"  attack <foe>    — engage a hostile (alias kill/breach)\r\n" +
 		"  flee            — try to break a fight and bolt\r\n" +
 		"  say <msg>       — talk to others in the room\r\n" +
+		"  me / emote / :<action> — roleplay an action (\"Wintermute lights a cig\")\r\n" +
 		"  who             — who's jacked in\r\n" +
 		"  score (st)      — your character sheet\r\n" +
 		"  list / buy <x>  — vendor (at shops); use <item> to consume\r\n" +
-		"  loot            — strip a flatlined sleeve (corpse) of its gear\r\n" +
-		"  install <cyber> — ripperdoc re-installs salvaged cyberware (at the Night Market)\r\n" +
+		"  loot            — strip a flatlined body (corpse) of its gear\r\n" +
+		"  install <cyber> — Emergency Medic re-installs salvaged cyberware (at the Night Market)\r\n" +
 		"  give <item> <runner> — hand recovered gear back to a crewmate\r\n" +
 		"  inventory (i)   — what you're carrying\r\n" +
 		"  quests          — fixer bounty board (at a shop); accept <#> / claim\r\n" +
@@ -365,6 +387,6 @@ func helpText() string {
 		style(dim, "  In the Net, ATTACK breaches ICE using Intelligence and spends RAM\r\n"+
 			"  (buy a cyberdeck for more, ram-chips to refill). PvP is LIVE EVERYWHERE\r\n"+
 			"  except the street outside the clone pods — draw on a runner there and a\r\n"+
-			"  security drone flatlines you. Die and your sleeve drops with your gear;\r\n"+
-			"  LOOT it, re-INSTALL cyberware at a ripperdoc. Some ICE morphs when broken.") + crlf
+			"  security drone flatlines you. Die and your body drops with your gear;\r\n"+
+			"  LOOT it, re-INSTALL cyberware at a Emergency Medic. Some ICE morphs when broken.") + crlf
 }

@@ -258,7 +258,7 @@ func (w *World) killMob(p *Player, m *Mob) {
 	p.fighting = nil
 	p.Eddies += m.tmpl.Eddies // loot goes to the killer
 	p.send(style(hot, "*** "+m.tmpl.Name+" is destroyed! ***") + crlf)
-	p.send(style(gold, "You gain "+itoa(m.tmpl.XP)+" XP and €$"+itoa(m.tmpl.Eddies)+" eddies.") + crlf)
+	p.send(style(gold, "You gain "+itoa(m.tmpl.XP)+" XP and €$"+itoa(m.tmpl.Eddies)+" scrip.") + crlf)
 	w.broadcast(p.RoomID, p, style(dim, p.Name+" destroys "+m.tmpl.Name+".")+crlf)
 	w.creditQuestKill(p, m.tmpl.ID)
 	w.awardXP(p, m.tmpl.XP) // XP shared with crew in the room; handles level-ups
@@ -268,13 +268,13 @@ func (w *World) killMob(p *Player, m *Mob) {
 // credit/XP penalty — never permadeath.
 func (w *World) flatline(p *Player, killer *Mob) {
 	fee := p.Eddies / 10
-	p.send(style(red, "*** FLATLINE — "+killer.tmpl.Name+" wastes your sleeve. ***") + crlf)
-	p.send(style(neon, "Your stack restores into a fresh clone at the clinic. ") +
+	p.send(style(red, "*** FLATLINE — "+killer.tmpl.Name+" wastes your body. ***") + crlf)
+	p.send(style(neon, "Your mind restores into a fresh clone at the clinic. ") +
 		style(gold, "Clone fee: €$"+itoa(fee)) + style(neon, ".") + crlf)
 	if killer.target == p {
 		killer.target = nil
 	}
-	w.reSleeve(p, fee)
+	w.reClone(p, fee)
 }
 
 // pvpAllowed reports whether one runner may attack another in this room. PvP is
@@ -286,19 +286,19 @@ func (w *World) pvpAllowed(p *Player) bool {
 }
 
 // securityKill is the safe-zone enforcer: a runner who draws on another in a
-// no-violence zone is flatlined on the spot by an NCPD drone (drops their sleeve
+// no-violence zone is flatlined on the spot by a city security drone (drops their body
 // and pays the clone fee, like any death).
 func (w *World) securityKill(p *Player) {
 	fee := p.Eddies / 10
-	p.send(style(red, "*** An NCPD security drone flatlines you for assault in a no-violence zone. ***") + crlf)
-	p.send(style(neon, "Your stack restores into a fresh clone. ") +
+	p.send(style(red, "*** A City Security drone flatlines you for assault in a no-violence zone. ***") + crlf)
+	p.send(style(neon, "Your mind restores into a fresh clone. ") +
 		style(gold, "Clone fee: €$"+itoa(fee)) + style(neon, ".") + crlf)
-	w.reSleeve(p, fee)
+	w.reClone(p, fee)
 }
 
-// reSleeve runs the shared death sequence: clear combat, drop the old sleeve as
+// reClone runs the shared death sequence: clear combat, drop the old body as
 // a corpse, hand off crew leadership, and respawn the fresh clone (charging fee).
-func (w *World) reSleeve(p *Player, fee int) {
+func (w *World) reClone(p *Player, fee int) {
 	p.fighting = nil
 	p.pvpTarget = nil
 	w.dropCorpse(p)
@@ -306,7 +306,7 @@ func (w *World) reSleeve(p *Player, fee int) {
 	w.respawnPlayer(p, fee)
 }
 
-// dropCorpse leaves the dead runner's old sleeve where they fell, holding all
+// dropCorpse leaves the dead runner's old body where they fell, holding all
 // the gear the fresh clone woke up without: every inventory item PLUS their
 // cyberware (weapon + deck), which is stripped from the clone. The corpse stays
 // until someone loots it. Must run before respawnPlayer (which moves the room).
@@ -317,11 +317,11 @@ func (w *World) dropCorpse(p *Player) {
 	}
 	p.Inv = map[string]int{}
 	if p.WeaponName != "" && p.WeaponBonus > 0 {
-		loot[p.WeaponName]++ // weapon implant stays with the old sleeve
+		loot[p.WeaponName]++ // weapon implant stays with the old body
 		p.WeaponName, p.WeaponBonus = "", 0
 	}
 	if p.DeckBonus > 0 {
-		loot["cyberdeck"]++ // deck implant stays with the old sleeve
+		loot["cyberdeck"]++ // deck implant stays with the old body
 		p.DeckBonus = 0
 		if p.RAM > maxRAM(p) {
 			p.RAM = maxRAM(p)
@@ -331,7 +331,7 @@ func (w *World) dropCorpse(p *Player) {
 		return
 	}
 	w.corpses = append(w.corpses, &Corpse{Owner: p.Name, RoomID: p.RoomID, Loot: loot})
-	w.broadcast(p.RoomID, nil, style(dim, p.Name+"'s flatlined sleeve crumples to the ground, gear and all. (LOOT)")+crlf)
+	w.broadcast(p.RoomID, nil, style(dim, p.Name+"'s flatlined body crumples to the ground, gear and all. (LOOT)")+crlf)
 }
 
 // passLeadershipOnDeath hands the crew to the longest-tenured surviving member
@@ -351,20 +351,20 @@ func (w *World) passLeadershipOnDeath(p *Player) {
 }
 
 // pvpFlatline handles losing a netrun duel: the winner siphons a cut of the
-// loser's eddies (data theft) and the loser respawns in meatspace.
+// loser's scrip (data theft) and the loser respawns in meatspace.
 func (w *World) pvpFlatline(winner, loser *Player) {
 	loot := loser.Eddies / 10
 	loser.send(style(red, "*** YOUR DECK IS FRIED — "+winner.Name+" flatlines you and siphons €$"+itoa(loot)+". ***") + crlf)
 	winner.send(style(gold, "*** You fry "+loser.Name+"'s deck and siphon €$"+itoa(loot)+"! ***") + crlf)
 	winner.Eddies += loot
 	winner.pvpTarget = nil
-	w.reSleeve(loser, loot)
+	w.reClone(loser, loot)
 }
 
-// respawnPlayer re-sleeves a defeated runner: the cortical stack restores from
+// respawnPlayer re-clones a defeated runner: the neural backup restores from
 // its realtime backup into a FRESH, full-HP clone at the clone facility. The
-// only cost is the clone-body fee (`fee` eddies, ~10% of credits) — no XP or
-// skill loss, since the stack is intact. (Cyberware staying with the old sleeve
+// only cost is the clone-body fee (`fee` scrip, ~10% of credits) — no XP or
+// skill loss, since the stack is intact. (Cyberware staying with the old body
 // is handled separately by the corpse system.)
 func (w *World) respawnPlayer(p *Player, fee int) {
 	p.Eddies -= fee

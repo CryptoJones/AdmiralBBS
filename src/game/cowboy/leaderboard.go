@@ -24,7 +24,7 @@ func (w *World) leaderboard(p *Player) {
 		p.send(style(red, "The rankings are offline.") + crlf)
 		return
 	}
-	p.send(crlf + style(neon, "== TOP CONSOLE COWBOYS ==") + crlf)
+	p.send(crlf + style(neon, "== TOP COWBOYS ==") + crlf)
 	if len(top) == 0 {
 		p.send(style(dim, "  (no runners ranked yet)") + crlf)
 		return
