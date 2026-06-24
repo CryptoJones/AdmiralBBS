@@ -2,8 +2,20 @@
 
 _Last updated: 2026-06-24_
 
-> **What's left lives in [`planning/BACKLOG.md`](BACKLOG.md)** — the single
-> source of truth for unbuilt work (P1 moderation/abuse, P2/P3 polish).
+> **What's left lives in [`planning/BACKLOG.md`](BACKLOG.md)** — now FULLY
+> CLEARED (2026-06-24). All P1/P2/P3 items shipped across S014–S021.
+
+**S014–S021 (backlog clear-out, 2026-06-24)** — worked the whole BACKLOG top to
+bottom, each item tested and landed on `main` with a verified-green CI run:
+- S014 SSH-key fingerprint uniqueness (one account per key)
+- S015 SysOp IP banlist + transport-layer enforcement (drops at accept)
+- S016 user-to-user moderation (block/ignore + report-to-SysOp)
+- S017 pagination (mail / boards / files)
+- S018 message + mail edit/delete
+- S019 "new since last visit" read pointers
+- S020 who's-online (live roster)
+- S021 rapid-IP-change ("impossible travel") flagging (visibility only)
+Schema is at migration 008. CI green @ `5f4bad4`.
 
 **S013 (file-library hardening + CI green)** — landed on `main @ e9d0dfd`.
 Atomic per-user upload quota (closes the TOCTOU race), duplicate-filename

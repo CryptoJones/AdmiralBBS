@@ -3,9 +3,11 @@
 _Last updated: 2026-06-24. Single source of truth for unbuilt work. As items
 ship, move them to STATE.md's "Recently completed" and delete them here._
 
-The four founding features (boards, mail, files, doors), the SysOp console,
-2FA-SSH auth, encryption in transit + at rest, and CI (green @ `e9d0dfd`) are
-done. What remains is moderation/abuse tooling and quality-of-life polish.
+**STATUS: backlog fully cleared (2026-06-24).** Every P1/P2/P3 item below shipped
+to `main` across S014–S021, each with tests and a verified-green CI run. The
+four founding features (boards, mail, files, doors), the SysOp console, 2FA-SSH
+auth, and encryption in transit + at rest were already done before this pass.
+New work to add goes under a fresh heading below the non-goals.
 
 ## P1 — Moderation & abuse — COMPLETE (S014–S016)
 
