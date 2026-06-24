@@ -166,13 +166,14 @@ func main() {
 		}
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
-		// One node per caller: reject extra concurrent logins by the same user
-		// (otherwise they multiply their daily time budget).
-		if !presence.Enter(u.Handle) {
-			w.ColorLine(screen.Red, fmt.Sprintf("You're already logged in (limit %d). NO CARRIER", presence.Max()))
-			return
-		}
-		defer presence.Leave(u.Handle)
+		// One live session per user, NEWEST WINS: a new login displaces any
+		// existing session for this handle (intuitive UX + self-heals stale/ghost
+		// sessions). Still prevents budget-multiplying across many sessions.
+		presID := presence.Enter(u.Handle, func() {
+			_, _ = c.Write([]byte("\r\n*** Logged in from another location — this session ends. NO CARRIER ***\r\n"))
+			_ = c.Close()
+		})
+		defer presence.Leave(u.Handle, presID)
 		node := nodePool.Acquire()
 		if node == 0 {
 			w.ColorLine(screen.Red, "All nodes are busy right now — try again shortly. NO CARRIER")
