@@ -41,10 +41,12 @@ func main() {
 				handle(world, ev)
 			case <-ticker.C:
 				world.Tick()
-				// Re-show a prompt so combat output doesn't leave a bare line.
+				// Re-show the prompt ONLY for players who got output this tick
+				// (combat/chat/room events). Idle players keep their single
+				// prompt instead of it repeating every tick.
 				for _, c := range activeConns() {
 					if c.player != nil {
-						world.Prompt(c.player)
+						world.PromptIfDirty(c.player)
 					}
 				}
 			}

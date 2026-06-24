@@ -90,9 +90,19 @@ func (w *World) Command(p *Player, line string) (quit bool) {
 	return false
 }
 
-// Prompt re-displays the player's status prompt (used by the server after a
-// tick so combat output doesn't leave a dangling line).
+// Prompt re-displays the player's status prompt (used by the server right after
+// a player joins).
 func (w *World) Prompt(p *Player) { w.sendPrompt(p) }
+
+// PromptIfDirty re-displays the prompt ONLY if the player received output since
+// their last prompt. The server calls this after each world tick so a player who
+// saw combat/chat/room output gets a fresh prompt — but an IDLE player does not
+// get the prompt re-printed every tick (which would spam it while they read).
+func (w *World) PromptIfDirty(p *Player) {
+	if p.dirty {
+		w.sendPrompt(p)
+	}
+}
 
 func (w *World) sendPrompt(p *Player) {
 	hpColor := green
@@ -107,6 +117,7 @@ func (w *World) sendPrompt(p *Player) {
 	}
 	p.send(style(hpColor, "["+itoa(p.HP)+"/"+itoa(p.MaxHP)+"hp]") + ram +
 		style(dim, " ["+mode+"] ") + style(green, "> "))
+	p.dirty = false // prompt now shown; nothing owed until the next output
 }
 
 func (w *World) lookText(p *Player) {

@@ -29,6 +29,7 @@ type Player struct {
 	party        *Party         // co-op crew (nil = solo)
 	shieldTicks  int            // remaining ticks of the mirror program's damage shield
 	shieldAmt    int            // flat damage reduction while shielded
+	dirty        bool           // output was sent since the last prompt (gates tick re-prompts)
 	out          func(string)   // output sink (set by the server; nil-safe via send)
 }
 
@@ -42,6 +43,7 @@ func (p *Player) send(s string) {
 	if p.out != nil {
 		p.out(s)
 	}
+	p.dirty = true // output emitted; a fresh prompt is owed (cleared by sendPrompt)
 }
 
 // MobTemplate is the static definition of a hostile program/NPC.
