@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"admiralbbs/src/audit"
@@ -88,6 +90,19 @@ func main() {
 		log.Fatalf("audit log: %v", err)
 	}
 	defer logger.Close()
+
+	// Graceful shutdown: flush + close state cleanly on SIGINT/SIGTERM (e.g.
+	// container stop), since os.Exit skips deferred closes.
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigc
+		log.Println("shutting down — flushing audit + closing database")
+		logger.Close()
+		db.Close()
+		vault.Close()
+		os.Exit(0)
+	}()
 
 	var counter atomic.Uint64
 	limits := transport.Limits{MaxSessions: *maxSessions, PerIP: *perIP, HandshakeTimeout: 10 * time.Second}

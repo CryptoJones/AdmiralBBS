@@ -38,6 +38,25 @@ For defence against a stolen disk, also place the host volume on an **encrypted
 filesystem** (LUKS / encrypted volume) — the app-level encryption protects
 content, the encrypted volume covers structural metadata too.
 
+## First SysOp (bootstrap)
+
+The control panel is gated to access level ≥80, and access level is only granted
+*by* a SysOp — so a fresh BBS needs a one-time bootstrap, done on the host with
+`sysopctl` (it needs `ADMIRALBBS_KEY`):
+
+1. The prospective admin connects over **Telnet** and submits a membership
+   application (handle + their SSH public key).
+2. On the host:
+   ```sh
+   ADMIRALBBS_KEY=... sysopctl -db data/admiralbbs.db -salt data/key.salt approve <handle> 100
+   ```
+   This approves the user at level 100 and prints a **one-time onboarding token**.
+3. The admin connects over **SSH** (their key now authenticates), enters the
+   token, and sets a password. They now see the **SysOp Control Panel** (`X`).
+
+`sysopctl list` shows all users + status; `promote <handle> [level]` adjusts an
+existing user directly.
+
 ## Threat model (be honest with yourself)
 
 - **Effective against offline access:** a stolen disk, copied volume, image
