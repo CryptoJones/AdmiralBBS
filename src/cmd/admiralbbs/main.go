@@ -31,7 +31,7 @@ const sysopLevel = 100
 
 // version is the released BBS version (SemVer). Bump the PATCH on each merge;
 // MINOR for backward-compatible features, MAJOR for breaking changes.
-const version = "1.0.2"
+const version = "1.0.3"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -154,7 +154,7 @@ func main() {
 	telnetHandle := func(c transport.Conn) {
 		s := mkSession(c)
 		defer s.Close()
-		_ = menu.RunApply(s, db.Users(), db.Memberships(), db.Keys())
+		_ = menu.RunApply(s, db)
 	}
 
 	// SSH first factor: the offered key must belong to an approved user with

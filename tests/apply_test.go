@@ -28,7 +28,7 @@ func TestRunApplyCreatesPendingApplication(t *testing.T) {
 	conn := newFakeConn(input, "ansi", transport.WindowSize{Cols: 80})
 	sess := session.New("s-1", conn, lg, func() time.Time { return time.Unix(1_700_000_000, 0) })
 
-	if err := menu.RunApply(sess, s.Users(), s.Memberships(), s.Keys()); err != nil {
+	if err := menu.RunApply(sess, s); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	sess.Close()

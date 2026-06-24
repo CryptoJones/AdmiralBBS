@@ -15,12 +15,14 @@ import (
 // No secret is ever collected here: Telnet is plaintext, so only public data
 // (handle, public keys, contact) is gathered. The password is set on first SSH
 // login behind the one-time approval token (DECISIONS: Telnet = apply-only).
-func RunApply(s *session.Session, users *store.Users, memberships *store.Memberships, keys *store.Keys) error {
+func RunApply(s *session.Session, st *store.Store) error {
+	users, memberships, keys := st.Users(), st.Memberships(), st.Keys()
+	title := st.Settings().BBSName() + " :: Membership Application"
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
 	w.Clear()
-	w.ColorLine(screen.Cyan, "AdmiralBBS :: Membership Application")
-	w.ColorLine(screen.Cyan, "-----------------------------------")
+	w.ColorLine(screen.Cyan, title)
+	w.ColorLine(screen.Cyan, strings.Repeat("-", len(title)))
 	w.Line("Telnet is for applying only. Approved members connect over SSH.")
 	w.Print("\r\n")
 
