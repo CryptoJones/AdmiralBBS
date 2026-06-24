@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,16 @@ func RunMail(s *session.Session, st *store.Store, u *store.User) error {
 		inbox, err := st.Mail().Inbox(u.ID)
 		if err != nil {
 			return err
+		}
+		// Hide mail from users this member has blocked.
+		if blocked, err := st.Blocks().BlockedSet(u.ID); err == nil && len(blocked) > 0 {
+			kept := inbox[:0]
+			for _, m := range inbox {
+				if !blocked[m.FromID] {
+					kept = append(kept, m)
+				}
+			}
+			inbox = kept
 		}
 		if len(inbox) == 0 {
 			w.Line("  (your inbox is empty)")
@@ -84,16 +95,47 @@ func readMail(s *session.Session, st *store.Store, u *store.User, id int64, hand
 	w.SafePrint(m.Body)
 	w.Print("\r\n")
 	w.Color(screen.Green)
-	w.Print("\r\n[R]eply  [Q]uit: ")
+	w.Print("\r\n[R]eply  [B]lock sender  re[P]ort  [Q]uit: ")
 	w.Reset()
 	key, err := s.ReadKey()
 	if err != nil {
 		return err
 	}
-	if toLower(key) == 'r' {
+	switch toLower(key) {
+	case 'r':
 		return sendMail(s, st, u, m.FromID, "re: "+m.Subject)
+	case 'b':
+		if err := st.Blocks().Block(u.ID, m.FromID); err != nil {
+			w.ColorLine(screen.Red, "could not block")
+		} else {
+			s.Activity("block-user", handles.handle(m.FromID))
+			w.ColorLine(screen.Cyan, "\r\nBlocked. You won't see their mail or posts.")
+			_, _ = s.ReadKey()
+		}
+	case 'p':
+		reportUser(s, st, u, m.FromID, fmt.Sprintf("mail #%d", m.ID), handles)
 	}
 	return nil
+}
+
+// reportUser files an abuse report against target, routed to the SysOp queue.
+func reportUser(s *session.Session, st *store.Store, u *store.User, targetID int64, context string, handles *handleCache) {
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	w.Color(screen.Green)
+	w.Printf("\r\nReport %s to the SysOp. Describe the problem: ", handles.handle(targetID))
+	w.Reset()
+	note, err := s.ReadLine()
+	if err != nil {
+		return
+	}
+	if _, err := st.Reports().File(u.ID, targetID, context, note); err != nil {
+		w.ColorLine(screen.Red, "could not file report")
+		return
+	}
+	s.Activity("report-user", handles.handle(targetID))
+	w.ColorLine(screen.Cyan, "Report filed. A SysOp will review it.")
+	_, _ = s.ReadKey()
 }
 
 func composeMail(s *session.Session, st *store.Store, u *store.User, handles *handleCache) error {

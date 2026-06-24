@@ -32,6 +32,8 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath stri
 		w.Line("  [C] Create area / register door")
 		w.Line("  [A] Audit log viewer")
 		w.Line("  [B] IP banlist")
+		openReports, _ := st.Reports().OpenCount()
+		w.Printf("  [R] Abuse reports (%d open)\r\n", openReports)
 		w.Line("  [Q] Back to main menu")
 		w.Color(screen.Green)
 		w.Print("\r\nChoice: ")
@@ -59,6 +61,10 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath stri
 			}
 		case 'b':
 			if err := banManagement(s, st, u); err != nil {
+				return err
+			}
+		case 'r':
+			if err := reportsQueue(s, st, u); err != nil {
 				return err
 			}
 		case 'q':
@@ -286,6 +292,71 @@ func auditViewer(s *session.Session, st *store.Store, auditPath string) error {
 		} else {
 			w.ColorLine(screen.Green, fmt.Sprintf("Authoritative JSONL chain verified intact: %d events.", n))
 		}
+	}
+	w.Print("\r\nPress any key...")
+	_, e := s.ReadKey()
+	return e
+}
+
+func reportsQueue(s *session.Session, st *store.Store, sysop *store.User) error {
+	handles := newHandleCache(st)
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	w.Clear()
+	w.ColorLine(screen.Magenta, "Abuse Reports — open")
+	w.ColorLine(screen.Magenta, "--------------------")
+	open, err := st.Reports().Open()
+	if err != nil {
+		return err
+	}
+	if len(open) == 0 {
+		w.Line("  (no open reports)")
+		w.Print("\r\nPress any key...")
+		_, e := s.ReadKey()
+		return e
+	}
+	for i, r := range open {
+		w.Color(screen.Yellow)
+		w.Printf("  %d) ", i+1)
+		w.Color(screen.White)
+		w.Printf("%s reported ", handles.handle(r.ReporterID))
+		w.SafePrint(handles.handle(r.TargetID))
+		w.Reset()
+		w.Printf("  [%s] ", r.Context)
+		w.SafePrint(firstLine(r.Note))
+		w.Print("\r\n")
+	}
+	w.Color(screen.Green)
+	w.Print("\r\nReport # to act on (or [Q]): ")
+	w.Reset()
+	in, err := s.ReadLine()
+	if err != nil {
+		return err
+	}
+	n, perr := strconv.Atoi(strings.TrimSpace(in))
+	if perr != nil || n < 1 || n > len(open) {
+		return nil
+	}
+	r := open[n-1]
+	w.Printf("\r\n[S]uspend %s  [R]esolve (no action)  [Q]: ", handles.handle(r.TargetID))
+	act, err := s.ReadKey()
+	if err != nil {
+		return err
+	}
+	switch toLower(act) {
+	case 's':
+		if target, e := st.Users().ByID(r.TargetID); e == nil {
+			st.Users().SetStatus(target.ID, store.StatusSuspended, target.AccessLevel)
+			w.ColorLine(screen.Red, "\r\nUser suspended.")
+		}
+		_ = st.Reports().Resolve(r.ID, sysop.ID)
+		s.Activity("report-resolve", "suspend "+handles.handle(r.TargetID))
+	case 'r':
+		_ = st.Reports().Resolve(r.ID, sysop.ID)
+		w.ColorLine(screen.Cyan, "\r\nResolved.")
+		s.Activity("report-resolve", "noaction "+handles.handle(r.TargetID))
+	default:
+		return nil
 	}
 	w.Print("\r\nPress any key...")
 	_, e := s.ReadKey()

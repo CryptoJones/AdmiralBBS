@@ -7,10 +7,9 @@ The four founding features (boards, mail, files, doors), the SysOp console,
 2FA-SSH auth, encryption in transit + at rest, and CI (green @ `e9d0dfd`) are
 done. What remains is moderation/abuse tooling and quality-of-life polish.
 
-## P1 — Moderation & abuse (the real gap)
+## P1 — Moderation & abuse — COMPLETE (S014–S016)
 
-These are the items CJ surfaced that are genuinely missing. Suggested order is
-cheapest-anti-abuse-win first.
+All three landed on `main`. The moderation gap CJ surfaced is closed.
 
 - [x] **SSH-key fingerprint uniqueness** — DONE (S014, `main`). One account per
   public-key fingerprint, enforced by a partial unique index on active keys
@@ -23,9 +22,13 @@ cheapest-anti-abuse-win first.
   add/lift/list, and a `BanCheck` hook that drops banned sources at accept time
   in BOTH transports before auth. End-to-end test proves the Telnet listener
   rejects a banned source (handler never runs).
-- [ ] **User-to-user moderation** — block/ignore (a user mutes another so their
-  messages/mail are hidden) + report-to-SysOp (a report lands in the SysOp
-  queue for review/action).
+- [x] **User-to-user moderation** — DONE (S016, `main`). `user_block` (personal,
+  one-directional mute) + `report` queue (migration 006). `store.Blocks`
+  (Block/Unblock/IsBlocked/BlockedSet/List) and `store.Reports`
+  (File/Open/Resolve/OpenCount). Mail inbox and board threads/replies hide
+  blocked users; read views offer [B]lock + re[P]ort; profile has block
+  management; SysOp panel [R] reviews/resolves reports (with suspend). E2E test
+  proves the mail menu actually hides a blocked sender.
 
 ## P2 — Quality-of-life polish (flagged but not blocking)
 
