@@ -104,6 +104,12 @@ func (s *Session) ID() string { return s.id }
 // Username returns the login name the transport carried (SSH user; "" for telnet).
 func (s *Session) Username() string { return s.conn.Username() }
 
+// IP returns the caller's remote host (no port).
+func (s *Session) IP() string { return ipOf(s.conn.RemoteAddr()) }
+
+// Transport returns the transport name ("ssh" / "telnet").
+func (s *Session) Transport() string { return s.conn.Transport() }
+
 // WatchBudget disconnects the caller after d regardless of activity — the daily
 // time-budget cap. A non-positive d disables it.
 func (s *Session) WatchBudget(d time.Duration) {

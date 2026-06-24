@@ -48,7 +48,11 @@ All three landed on `main`. The moderation gap CJ surfaced is closed.
   shows "(N new)" per area; in-area new posts are flagged `*`; the pointer
   advances to the newest post on exit. Store tests + an e2e proving the markers
   appear on first visit and clear on the second.
-- [ ] **Who's-online** — list currently-connected nodes/users.
+- [x] **Who's-online** — DONE (S020, `main`). `session.Roster` (live, in-memory,
+  node-keyed Join/Leave/List/Count); main.go registers each caller after
+  login and deregisters on disconnect; new `[W] Who's Online` member-menu entry
+  shows node, handle, transport, and time-on. Roster unit test + an e2e
+  rendering the view.
 
 ## P3 — Visibility / nice-to-have
 
