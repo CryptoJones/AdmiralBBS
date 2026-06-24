@@ -40,9 +40,15 @@ BBSes were apart of a lot of hackers childhoods and this is a fun project to pay
 
 AdmiralBBS runs classic **door games** — external programs a caller drops into.
 Two models are supported: single-player / turn-based **subprocess** doors, and
-persistent **resident** servers the BBS bridges for real-time multiplayer. The
-bundled reference is **Console Cowboy 2026**, a multiplayer cyberpunk MUD —
-see [`docs/CONSOLE_COWBOY.md`](docs/CONSOLE_COWBOY.md).
+persistent **resident** servers the BBS bridges for real-time multiplayer.
+AdmiralBBS ships no game code itself; register any door with the generic
+`-door "name|network|address|minlevel"` flag.
+
+The reference resident door is **[Chrome Circuit Cowboys
+(C³)](https://github.com/CryptoJones/ChromeCircuitCowboys)**, a multiplayer
+cyberpunk MUD (its own repo as of BBS v2.0). Fetch, build, and install it with
+[`scripts/install-door.sh`](scripts/install-door.sh) — the repo/forge is
+configurable (`DOOR_REPO`), so nothing is tied to one host.
 
 **Want to build your own?** The developer standard — both door models, the
 `door32.sys` dropfile, the resident bridge contract, security expectations, and
