@@ -101,8 +101,12 @@ func verify(s *session.Session, w *screen.Writer, st *store.Store, u *store.User
 		}
 		ok, _ := store.VerifyPassword(u.PasswordHash, pw)
 		if ok {
-			st.Users().TouchLogin(u.ID, time.Now())
-			s.Activity("login", "ok")
+			flagged, _ := st.Users().RecordLogin(u.ID, s.IP(), time.Now())
+			if flagged {
+				s.Activity("login", "ok (rapid-ip-change flagged)")
+			} else {
+				s.Activity("login", "ok")
+			}
 			return u, true
 		}
 		s.Activity("login-failed", "")

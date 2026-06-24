@@ -284,6 +284,18 @@ func auditViewer(s *session.Session, st *store.Store, auditPath string) error {
 		w.SafePrint(e.Action)
 		w.Print("\r\n")
 	}
+	// Rapid-IP-change ("impossible travel") flags — visibility only.
+	if anomalies, _ := st.Anomalies().Recent(5); len(anomalies) > 0 {
+		handles := newHandleCache(st)
+		w.Print("\r\n")
+		w.ColorLine(screen.Yellow, "Rapid IP changes (review — not auto-blocked):")
+		for _, a := range anomalies {
+			w.Printf("  %s %-10s %s -> %s after %ds\r\n",
+				a.At.Format("01-02 15:04"), trunc(handles.handle(a.UserID), 10),
+				a.PrevIP, a.NewIP, a.GapSeconds)
+		}
+	}
+
 	w.Print("\r\n")
 	if auditPath != "" {
 		n, verr := st.VerifyAuditChain(auditPath)
