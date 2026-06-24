@@ -12,11 +12,11 @@ done. What remains is moderation/abuse tooling and quality-of-life polish.
 These are the items CJ surfaced that are genuinely missing. Suggested order is
 cheapest-anti-abuse-win first.
 
-- [ ] **SSH-key fingerprint uniqueness** — one account per public-key
-  fingerprint. Today the same key can register on multiple accounts, so
-  key-pairs don't stop sockpuppets. Add a uniqueness constraint on the key
-  fingerprint (race-safe via DB constraint, like the handle) + a clear error on
-  collision. Cheapest anti-sockpuppet win.
+- [x] **SSH-key fingerprint uniqueness** — DONE (S014, `main`). One account per
+  public-key fingerprint, enforced by a partial unique index on active keys
+  (migration 004) so it's race-safe like the handle constraint. `ErrKeyTaken`
+  surfaced in the apply flow and profile add; `Keys.ByFingerprint` resolves a
+  key to its single owner. Revoking frees the fingerprint for re-use.
 - [ ] **SysOp IP banlist + transport enforcement** — SysOp can ban an IP /
   CIDR; the Telnet and SSH listeners reject banned sources at connect time
   (before auth). Needs a `banlist` table, a SysOp panel entry, and an
