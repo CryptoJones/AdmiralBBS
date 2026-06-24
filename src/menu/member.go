@@ -11,28 +11,34 @@ import (
 // placeholders until their sprints land; the Profile entry (self-service SSH
 // key management) is live now.
 func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts doors.Opts, node int, doorsData string, roster *session.Roster, sysopPass string) *Menu {
-	items := []Item{
-		{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u)},
-		{Key: 'E', Label: "Private Mail", Action: mailAction(st, u)},
-		{Key: 'F', Label: "File Library", Action: filesAction(st, u)},
-		{Key: 'D', Label: "Door Games", Action: doorsAction(st, u, doorOpts, node, doorsData)},
-		{Key: 'W', Label: "Who's Online", Action: whosOnlineAction(roster)},
-		{Key: 'K', Label: "My SSH Keys / Profile", Action: profileAction(st, u)},
+	m := &Menu{ArtPath: artPath}
+	// Refresh re-reads branding + items on EVERY render, so a SysOp editing the
+	// BBS name/tagline/MOTD sees it take effect immediately — not only after the
+	// member logs out and the menu is rebuilt.
+	m.Refresh = func() {
+		items := []Item{
+			{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u)},
+			{Key: 'E', Label: "Private Mail", Action: mailAction(st, u)},
+			{Key: 'F', Label: "File Library", Action: filesAction(st, u)},
+			{Key: 'D', Label: "Door Games", Action: doorsAction(st, u, doorOpts, node, doorsData)},
+			{Key: 'W', Label: "Who's Online", Action: whosOnlineAction(roster)},
+			{Key: 'K', Label: "My SSH Keys / Profile", Action: profileAction(st, u)},
+		}
+		if motd := st.Settings().MOTD(); motd != "" {
+			items = append(items, Item{Key: 'O', Label: "Message of the Day (re-read)", Action: motdAction(st)})
+		}
+		if u.AccessLevel >= CoSysOpLevel {
+			items = append(items, Item{Key: 'X', Label: "SysOp Control Panel", Action: sysopAction(st, u, auditPath, sysopPass)})
+		}
+		items = append(items, Item{Key: 'G', Label: "Goodbye / Logoff", Action: logoffAction(st)})
+
+		name, tagline := st.Settings().BBSName(), st.Settings().Tagline()
+		m.Title = name + " :: Main Menu"
+		m.Banner = BBSBanner(name, tagline) // shown unless a custom -art is supplied
+		m.Items = items
 	}
-	if motd := st.Settings().MOTD(); motd != "" {
-		items = append(items, Item{Key: 'O', Label: "Message of the Day (re-read)", Action: motdAction(st)})
-	}
-	if u.AccessLevel >= CoSysOpLevel {
-		items = append(items, Item{Key: 'X', Label: "SysOp Control Panel", Action: sysopAction(st, u, auditPath, sysopPass)})
-	}
-	items = append(items, Item{Key: 'G', Label: "Goodbye / Logoff", Action: logoffAction(st)})
-	name, tagline := st.Settings().BBSName(), st.Settings().Tagline()
-	return &Menu{
-		Title:   name + " :: Main Menu",
-		Banner:  BBSBanner(name, tagline), // shown unless a custom -art is supplied
-		ArtPath: artPath,
-		Items:   items,
-	}
+	m.Refresh() // initial populate
+	return m
 }
 
 // logoffAction says goodbye using the configured BBS name, then disconnects.
