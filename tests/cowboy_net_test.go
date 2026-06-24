@@ -9,6 +9,7 @@ import (
 
 // routeToNet walks a player from the start room up into the Grid Node.
 func routeToNet(w *cowboy.World, p *cowboy.Player) {
+	w.Command(p, "out")  // capsule pod -> neon_alley (the street)
 	w.Command(p, "east") // the_sprawl
 	w.Command(p, "east") // corpo_plaza
 	w.Command(p, "east") // data_port
@@ -145,8 +146,8 @@ func TestCowboyPvPDuel(t *testing.T) {
 	if !strings.Contains(b2.String(), "DECK IS FRIED") {
 		t.Errorf("loser should be flatlined; out:\n%s", lastLines(b2.String()))
 	}
-	if p2.RoomID != "neon_alley" {
-		t.Errorf("loser should respawn at the start, at %s", p2.RoomID)
+	if p2.RoomID != "capsule" {
+		t.Errorf("loser should respawn at the start capsule, at %s", p2.RoomID)
 	}
 	if p1.Eddies <= p1Eddies {
 		t.Errorf("winner should siphon eddies: before %d after %d", p1Eddies, p1.Eddies)
@@ -157,8 +158,10 @@ func TestCowboyNoPvPInMeatspace(t *testing.T) {
 	w := cowboy.NewWorld(cowboy.NewMemStore())
 	o1, _ := sink()
 	p1 := w.Connect("Case", o1)
+	w.Command(p1, "out")
 	o2, _ := sink()
-	w.Connect("Molly", o2) // both in neon_alley (meatspace)
+	p2 := w.Connect("Molly", o2)
+	w.Command(p2, "out") // both now in neon_alley (meatspace)
 
 	w.Command(p1, "attack molly")
 	if p1.RoomID != "neon_alley" {
@@ -175,6 +178,7 @@ func TestCowboyDeckPersistsRAM(t *testing.T) {
 	p := w.Connect("Case", out)
 	baseMax := 5 + p.Intelligence/2
 
+	w.Command(p, "out")   // re-sleeve bay -> neon_alley
 	w.Command(p, "south") // chrome_bar vendor
 	p.Eddies = 500
 	w.Command(p, "buy cyberdeck")

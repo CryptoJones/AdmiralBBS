@@ -107,8 +107,9 @@ func TestCowboyPartyXPShareAndChat(t *testing.T) {
 		t.Fatal("crew should form once the invite is accepted")
 	}
 
-	// Both to the back alley.
+	// Both out to the street, then to the back alley.
 	for _, p := range []*cowboy.Player{p1, p2} {
+		w.Command(p, "out")
 		w.Command(p, "east")
 		w.Command(p, "north")
 	}

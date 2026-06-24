@@ -27,7 +27,8 @@ func TestCowboyQuestAcceptKillClaim(t *testing.T) {
 	out, buf := sink()
 	p := w.Connect("Case", out)
 
-	// Accept "Clear the Back Alley" (3 gangers) at the fixer south of start.
+	// Accept "Clear the Back Alley" (3 gangers) at the fixer off the street.
+	w.Command(p, "out")   // re-sleeve bay -> neon_alley
 	w.Command(p, "south") // chrome_bar (fixer)
 	w.Command(p, "quests")
 	if !strings.Contains(buf.String(), "Clear the Back Alley") {
@@ -71,6 +72,7 @@ func TestCowboyMinLevelGate(t *testing.T) {
 	w := cowboy.NewWorld(cowboy.NewMemStore())
 	out, buf := sink()
 	p := w.Connect("Rookie", out) // level 1
+	w.Command(p, "out")           // -> neon_alley
 	w.Command(p, "south")         // fixer
 	w.Command(p, "accept 4")      // "Ghost in the Machine" needs level 5
 	if _, ok := p.Quests["ghost_machine"]; ok {
@@ -89,6 +91,7 @@ func TestCowboyLevelCap(t *testing.T) {
 
 	// Pile on far more XP than the whole curve needs, then trigger one kill so
 	// checkLevelUp runs. It must stop exactly at the cap and zero excess XP.
+	w.Command(p, "out")   // -> neon_alley
 	w.Command(p, "east")  // the_sprawl
 	w.Command(p, "north") // back_alley
 	p.XP = 100_000_000

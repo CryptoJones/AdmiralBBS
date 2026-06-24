@@ -19,6 +19,8 @@ func (w *World) effAttack(p *Player) int {
 var dirAliases = map[string]string{
 	"n": "north", "s": "south", "e": "east", "w": "west", "u": "up", "d": "down",
 	"north": "north", "south": "south", "east": "east", "west": "west", "up": "up", "down": "down",
+	"out": "out", "o": "out", // capsule pod -> street
+	"in": "in", // street -> your capsule pod
 }
 
 // Command parses and executes a single input line for player p. It returns true
@@ -81,6 +83,8 @@ func (w *World) Command(p *Player, line string) (quit bool) {
 		w.group(p, arg)
 	case "invite":
 		w.invite(p, arg)
+	case "home", "rest":
+		w.goHome(p)
 	case "leave", "ungroup":
 		w.leaveParty(p)
 	case "gsay", "crewchat", "party":
@@ -146,7 +150,7 @@ func (w *World) lookText(p *Player) {
 	}
 	// Exits.
 	var dirs []string
-	for _, d := range []string{"north", "south", "east", "west", "up", "down"} {
+	for _, d := range []string{"north", "south", "east", "west", "up", "down", "in", "out"} {
 		if _, ok := r.Exits[d]; ok {
 			dirs = append(dirs, d)
 		}
@@ -245,9 +249,28 @@ func (w *World) move(p *Player, dir string) {
 	w.lookText(p)
 }
 
+// goHome steps into your capsule pod — but only from the street (Neon Alley), so
+// it's a convenience, not a teleport/escape. Like any move, it's combat-blocked.
+func (w *World) goHome(p *Player) {
+	if p.RoomID == "capsule" {
+		p.send(style(dim, "You're already in your pod.") + crlf)
+		return
+	}
+	if p.fighting != nil || p.pvpTarget != nil {
+		p.send(style(hot, "You're in combat! Break the connection with FLEE first.") + crlf)
+		return
+	}
+	if p.RoomID != "neon_alley" {
+		p.send(style(dim, "Your capsule hotel is off Neon Alley — get to the street, then HOME (or go IN).") + crlf)
+		return
+	}
+	w.move(p, "in")
+}
+
 func helpText() string {
 	return crlf + style(neon, "== Console Cowboy 2026 — commands ==") + crlf +
 		"  Movement : N S E W U D  (or north/south/...)\r\n" +
+		"  home / in / out — your private capsule pod (off Neon Alley); spawn-safe\r\n" +
 		"  look (l)        — examine your location\r\n" +
 		"  attack <foe>    — engage a hostile (alias kill/breach)\r\n" +
 		"  flee            — try to break a fight and bolt\r\n" +

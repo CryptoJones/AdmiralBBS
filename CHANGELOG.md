@@ -13,6 +13,23 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.3.0] - 2026-06-24
+
+### Changed
+- **Console Cowboy: re-sleeve death model + spawn-safe clone bay (Altered-Carbon
+  style).** Foundation pass:
+  - New/respawning runners now wake in a **private, isolated Re-Sleeve Bay** (the
+    clone clinic), not a shared street room — so a respawn can't be spawn-camped.
+    Step `out` into the street; `home`/`in` returns you (from the street only —
+    not a teleport, and combat-blocked).
+  - Death is now a **re-sleeve**: your stack restores into a **fresh, full-HP
+    clone**. **No XP/skill loss** (the stack is backed up). The only cost is a
+    **10% clone-body fee** of your credits — credits are never otherwise reduced.
+  - **Leadership passes on death:** if a crew leader flatlines, the crew passes to
+    the longest-tenured surviving member (a dead runner doesn't keep leading).
+  - _Next (v1.4.0): your old sleeve drops as a lootable corpse holding your gear +
+    cyberware; cyberware must be re-installed at a ripperdoc._
+
 ## [1.2.0] - 2026-06-24
 
 ### Changed
@@ -186,7 +203,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.3.0
 [1.2.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.2.0
 [1.1.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.2
 [1.1.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.1

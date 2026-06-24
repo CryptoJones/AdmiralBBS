@@ -65,6 +65,11 @@ func (w *World) spawn(t *MobTemplate) {
 func (w *World) room(id string) *Room { return w.rooms[id] }
 
 func (w *World) playersIn(roomID string, except *Player) []*Player {
+	// A private room is a per-runner capsule pod: occupants never see, hear, or
+	// can be targeted by anyone else, even though they share the room id.
+	if r := w.rooms[roomID]; r != nil && r.Private {
+		return nil
+	}
 	var out []*Player
 	for _, p := range w.players {
 		if p.RoomID == roomID && p != except {

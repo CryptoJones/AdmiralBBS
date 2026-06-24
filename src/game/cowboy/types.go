@@ -75,11 +75,12 @@ type Mob struct {
 
 // Room is one location in the city/net.
 type Room struct {
-	ID     string
-	Name   string
-	Desc   string
-	Exits  map[string]string // direction -> room id
-	Vendor bool              // a shop operates here
+	ID      string
+	Name    string
+	Desc    string
+	Exits   map[string]string // direction -> room id
+	Vendor  bool              // a shop operates here
+	Private bool              // a per-runner capsule pod — occupants are isolated (no one shares it)
 }
 
 // SavedPlayer is the persisted slice of a Player (progress survives logout).
