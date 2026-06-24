@@ -13,6 +13,15 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.1.2] - 2026-06-24
+
+### Fixed
+- **Console Cowboy: welcome-banner box border is now aligned.** The box rows were
+  hand-spaced to mismatched widths (title 2 cols short, tagline 2 cols long — the
+  em-dash `—` made it worse), so the right `║` zig-zagged and didn't meet the
+  `╗`/`╝`. The banner is now sized to its widest line and each row padded by rune
+  count, so the borders line up on any terminal. Found in live co-op play.
+
 ## [1.1.1] - 2026-06-24
 
 ### Fixed
@@ -163,7 +172,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.2
 [1.1.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.1
 [1.1.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.1.0
 [1.0.9]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.9
