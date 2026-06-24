@@ -1,0 +1,192 @@
+package store
+
+import (
+	"database/sql"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+// MaxFileBytes caps a single upload to blunt disk-exhaustion (RISKS SEC-7).
+const MaxFileBytes = 10 << 20 // 10 MiB
+
+// ErrTooLarge is returned when an upload exceeds MaxFileBytes.
+var ErrTooLarge = errors.New("file exceeds the size limit")
+
+// FileArea is a download area in the file library.
+type FileArea struct {
+	ID             int64
+	Name           string
+	MinAccessLevel int
+}
+
+// FileEntry is a downloadable object. The blob lives sealed on disk; only
+// metadata is in the DB. The on-disk path is derived from the row id, so a
+// hostile filename can never traverse out of the files dir (SEC-7).
+type FileEntry struct {
+	ID            int64
+	AreaID        int64
+	Filename      string // display name only
+	SizeBytes     int64
+	Description   string
+	UploaderID    int64
+	DownloadCount int64
+	UploadedAt    time.Time
+}
+
+// FileAreas is the file-area repository.
+type FileAreas struct{ st *Store }
+
+func (r *FileAreas) Create(name string, minLevel int) (*FileArea, error) {
+	res, err := r.st.db.Exec(`INSERT INTO file_area (name, min_access_level) VALUES (?, ?)`, name, minLevel)
+	if err != nil {
+		return nil, err
+	}
+	id, _ := res.LastInsertId()
+	return &FileArea{ID: id, Name: name, MinAccessLevel: minLevel}, nil
+}
+
+func (r *FileAreas) Count() (int, error) {
+	var n int
+	err := r.st.db.QueryRow(`SELECT COUNT(*) FROM file_area`).Scan(&n)
+	return n, err
+}
+
+func (r *FileAreas) Visible(accessLevel int) ([]*FileArea, error) {
+	rows, err := r.st.db.Query(`SELECT id, name, min_access_level FROM file_area WHERE min_access_level <= ? ORDER BY name`, accessLevel)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*FileArea
+	for rows.Next() {
+		var a FileArea
+		if err := rows.Scan(&a.ID, &a.Name, &a.MinAccessLevel); err != nil {
+			return nil, err
+		}
+		out = append(out, &a)
+	}
+	return out, rows.Err()
+}
+
+func (r *FileAreas) ByID(id int64, accessLevel int) (*FileArea, error) {
+	var a FileArea
+	err := r.st.db.QueryRow(`SELECT id, name, min_access_level FROM file_area WHERE id = ?`, id).
+		Scan(&a.ID, &a.Name, &a.MinAccessLevel)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && accessLevel < a.MinAccessLevel) {
+		return nil, ErrNotFound
+	}
+	return &a, err
+}
+
+// Files is the file-entry repository.
+type Files struct{ st *Store }
+
+func (r *Files) blobPath(id int64) string {
+	// id-based name — never derived from the caller's filename (SEC-7).
+	return filepath.Join(r.st.filesDir, fmt.Sprintf("%d.bin", id))
+}
+
+// Add stores an uploaded blob: the row is inserted first (to allocate an id),
+// then the content is sealed and written to <id>.bin. Returns ErrTooLarge if
+// the content exceeds MaxFileBytes.
+func (r *Files) Add(areaID, uploaderID int64, filename, description string, content []byte) (*FileEntry, error) {
+	if int64(len(content)) > MaxFileBytes {
+		return nil, ErrTooLarge
+	}
+	now := time.Now().UTC()
+	res, err := r.st.db.Exec(
+		`INSERT INTO file_entry (area_id, filename, path, size_bytes, description, uploader_id, uploaded_at)
+		 VALUES (?, ?, '', ?, ?, ?, ?)`,
+		areaID, filename, len(content), description, uploaderID, fmtTime(now))
+	if err != nil {
+		return nil, err
+	}
+	id, _ := res.LastInsertId()
+
+	sealed, err := r.st.vault.Seal(content)
+	if err != nil {
+		return nil, err
+	}
+	path := r.blobPath(id)
+	if err := os.WriteFile(path, sealed, 0o600); err != nil {
+		return nil, err
+	}
+	if _, err := r.st.db.Exec(`UPDATE file_entry SET path = ? WHERE id = ?`, filepath.Base(path), id); err != nil {
+		return nil, err
+	}
+	return &FileEntry{ID: id, AreaID: areaID, Filename: filename, SizeBytes: int64(len(content)),
+		Description: description, UploaderID: uploaderID, UploadedAt: now}, nil
+}
+
+const fileCols = `id, area_id, filename, size_bytes, description, uploader_id, download_count, uploaded_at`
+
+func (r *Files) scan(row interface{ Scan(...any) error }) (*FileEntry, error) {
+	var f FileEntry
+	var uploaded string
+	if err := row.Scan(&f.ID, &f.AreaID, &f.Filename, &f.SizeBytes, &f.Description, &f.UploaderID, &f.DownloadCount, &uploaded); err != nil {
+		return nil, err
+	}
+	f.UploadedAt = parseTime(uploaded)
+	return &f, nil
+}
+
+// ListByArea lists files in an area, newest first.
+func (r *Files) ListByArea(areaID int64) ([]*FileEntry, error) {
+	rows, err := r.st.db.Query(`SELECT `+fileCols+` FROM file_entry WHERE area_id = ? ORDER BY id DESC`, areaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []*FileEntry
+	for rows.Next() {
+		f, err := r.scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}
+
+// ByID fetches one file's metadata.
+func (r *Files) ByID(id int64) (*FileEntry, error) {
+	row := r.st.db.QueryRow(`SELECT `+fileCols+` FROM file_entry WHERE id = ?`, id)
+	f, err := r.scan(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	return f, err
+}
+
+// Content decrypts and returns a file's bytes, and bumps the download counter.
+func (r *Files) Content(id int64) ([]byte, error) {
+	sealed, err := os.ReadFile(r.blobPath(id))
+	if err != nil {
+		return nil, err
+	}
+	plain, err := r.st.vault.Open(sealed)
+	if err != nil {
+		return nil, err
+	}
+	_, _ = r.st.db.Exec(`UPDATE file_entry SET download_count = download_count + 1 WHERE id = ?`, id)
+	return plain, nil
+}
+
+// FileAreas returns the file-area repository.
+func (s *Store) FileAreas() *FileAreas { return &FileAreas{st: s} }
+
+// Files returns the file-entry repository.
+func (s *Store) Files() *Files { return &Files{st: s} }
+
+// EnsureSeedFileAreas creates a default download area on first run.
+func (s *Store) EnsureSeedFileAreas() error {
+	n, err := s.FileAreas().Count()
+	if err != nil || n > 0 {
+		return err
+	}
+	_, err = s.FileAreas().Create("General Files", 0)
+	return err
+}
