@@ -109,7 +109,21 @@ func (w *World) Tick() {
 	w.resolveCombat()
 	w.resolvePvP()
 	w.respawnDead()
+	w.expireShields()
 	w.regen()
+}
+
+// expireShields counts down the Mirror program's damage shield.
+func (w *World) expireShields() {
+	for _, p := range w.players {
+		if p.shieldTicks > 0 {
+			p.shieldTicks--
+			if p.shieldTicks == 0 {
+				p.shieldAmt = 0
+				p.send(style(dim, "Your Mirror deflector fades.") + crlf)
+			}
+		}
+	}
 }
 
 func (w *World) aggro() {
@@ -172,7 +186,7 @@ func (w *World) resolveCombat() {
 		}
 		if m.target == p {
 			if w.toHit(m.tmpl.Damage/2, playerAC(p)) {
-				d := dmg(m.tmpl.Damage, playerAC(p))
+				d := applyShield(p, dmg(m.tmpl.Damage, playerAC(p)))
 				p.HP -= d
 				p.send(style(red, m.tmpl.Name+" hits you for "+itoa(d)+".") + crlf)
 				if p.HP <= 0 {
@@ -199,7 +213,7 @@ func (w *World) resolvePvP() {
 			continue
 		}
 		if w.toHit(p.Reflexes, playerAC(d)) {
-			hit := dmg(w.playerSwing(p), playerAC(d))
+			hit := applyShield(d, dmg(w.playerSwing(p), playerAC(d)))
 			d.HP -= hit
 			p.send(style(green, "You breach "+d.Name+"'s deck for "+itoa(hit)+".") + crlf)
 			d.send(style(red, p.Name+" breaches your deck for "+itoa(hit)+".") + crlf)
@@ -234,13 +248,12 @@ func (w *World) killMob(p *Player, m *Mob) {
 		m.target = nil
 	}
 	p.fighting = nil
-	p.XP += m.tmpl.XP
-	p.Eddies += m.tmpl.Eddies
+	p.Eddies += m.tmpl.Eddies // loot goes to the killer
 	p.send(style(hot, "*** "+m.tmpl.Name+" is destroyed! ***") + crlf)
 	p.send(style(gold, "You gain "+itoa(m.tmpl.XP)+" XP and €$"+itoa(m.tmpl.Eddies)+" eddies.") + crlf)
 	w.broadcast(p.RoomID, p, style(dim, p.Name+" destroys "+m.tmpl.Name+".")+crlf)
 	w.creditQuestKill(p, m.tmpl.ID)
-	w.checkLevelUp(p)
+	w.awardXP(p, m.tmpl.XP) // XP shared with crew in the room; handles level-ups
 }
 
 // flatline handles player death by a mob: half HP, respawn at the start, and a

@@ -67,6 +67,26 @@ func (s *SQLiteStore) Load(name string) (*SavedPlayer, bool, error) {
 	return &sp, true, nil
 }
 
+// Top returns up to n characters ranked by level then XP (for the leaderboard).
+// Only the scalar fields are read; Inv/Quests are left nil.
+func (s *SQLiteStore) Top(n int) ([]SavedPlayer, error) {
+	rows, err := s.db.Query(`SELECT name, class, level, xp, eddies
+		FROM cowboy_player ORDER BY level DESC, xp DESC, name LIMIT ?`, n)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SavedPlayer
+	for rows.Next() {
+		var sp SavedPlayer
+		if err := rows.Scan(&sp.Name, &sp.Class, &sp.Level, &sp.XP, &sp.Eddies); err != nil {
+			return nil, err
+		}
+		out = append(out, sp)
+	}
+	return out, rows.Err()
+}
+
 // Save upserts a character.
 func (s *SQLiteStore) Save(sp *SavedPlayer) error {
 	inv, _ := json.Marshal(sp.Inv)

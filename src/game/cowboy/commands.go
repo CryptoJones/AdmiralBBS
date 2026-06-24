@@ -66,6 +66,18 @@ func (w *World) Command(p *Player, line string) (quit bool) {
 		w.accept(p, arg)
 	case "claim", "turnin":
 		w.claim(p)
+	case "run", "exec":
+		w.run(p, arg)
+	case "programs", "demons":
+		w.listPrograms(p)
+	case "group", "crew":
+		w.group(p, arg)
+	case "leave", "ungroup":
+		w.leaveParty(p)
+	case "gsay", "crewchat", "party":
+		w.groupChat(p, arg)
+	case "leaderboard", "top", "rankings":
+		w.leaderboard(p)
 	case "help", "?", "commands":
 		p.send(helpText())
 	case "quit", "logout", "exit":
@@ -170,6 +182,13 @@ func (w *World) score(p *Player) {
 	}
 	p.send("  Deck: " + deck + crlf)
 	p.send(style(gold, "  €$ "+itoa(p.Eddies)+" eddies") + crlf)
+	if p.shieldTicks > 0 {
+		p.send(style(dim, "  Mirror shield: -"+itoa(p.shieldAmt)+" dmg for "+itoa(p.shieldTicks)+" more round(s)") + crlf)
+	}
+	if p.party != nil && len(p.party.Members) > 1 {
+		p.send(style(dim, "  Crew: "+itoa(len(p.party.Members))+" members (GROUP to view)") + crlf)
+	}
+	p.send(style(dim, "  Programs: RUN <name> — see PROGRAMS") + crlf)
 }
 
 func (w *World) inventory(p *Player) {
@@ -212,6 +231,9 @@ func helpText() string {
 		"  list / buy <x>  — vendor (at shops); use <item> to consume\r\n" +
 		"  inventory (i)   — what you're carrying\r\n" +
 		"  quests          — fixer bounty board (at a shop); accept <#> / claim\r\n" +
+		"  programs / run <name> — netrun demons (scalpel/hammer/leech/mirror/medic)\r\n" +
+		"  group <runner>  — crew up (shared XP in-room); gsay <msg>; leave\r\n" +
+		"  leaderboard     — top runners by level\r\n" +
 		"  quit            — jack out\r\n" +
 		style(dim, "  In the Net, ATTACK breaches ICE using Intelligence and spends RAM\r\n"+
 			"  (buy a cyberdeck for more, ram-chips to refill). Deep in the Net you\r\n"+

@@ -62,12 +62,22 @@ one server. Console Cowboy is resident.)
 - **Quests** — fixers (vendor rooms) post repeatable bounties: `quests` to see
   the board, `accept <#>`, kill the target count anywhere, then `claim` back at
   a fixer for XP and eddies.
+- **Programs / demons** — `programs` lists your loaded netrun demons; `run <name>`
+  executes one for a RAM cost: **scalpel**/**hammer** (breach damage), **leech**
+  (damage + self-heal), **mirror** (a few rounds of damage shielding), **medic**
+  (HP repair, works anywhere). Damage demons auto-land but respect armor.
+- **Crews (co-op)** — `group <runner>` forms a crew; kill XP is **shared** among
+  crewmates in the same room (rounded in players' favor), `gsay <msg>` is crew
+  radio across rooms, and `leave` exits (a crew dissolves below two).
+- **Leaderboard** — `leaderboard` (alias `top`) ranks the top runners by level
+  then XP (reflects saved progress).
 
 ### Commands
 
 `N S E W U D` movement · `look` · `attack <foe|runner>` · `flee` · `say <msg>` ·
 `who` · `score` · `list`/`buy <item>`/`use <item>` · `inventory` ·
-`quests`/`accept <#>`/`claim` · `help` · `quit`
+`quests`/`accept <#>`/`claim` · `programs`/`run <name>` ·
+`group <runner>`/`gsay <msg>`/`leave` · `leaderboard` · `help` · `quit`
 
 ## Verified
 

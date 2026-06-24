@@ -26,6 +26,9 @@ type Player struct {
 	Quests       map[string]int // active questID -> kills so far (>= Count means ready to claim)
 	fighting     *Mob           // current mob target (nil = not in mob combat)
 	pvpTarget    *Player        // current PvP target in the Net (nil = not duelling)
+	party        *Party         // co-op crew (nil = solo)
+	shieldTicks  int            // remaining ticks of the mirror program's damage shield
+	shieldAmt    int            // flat damage reduction while shielded
 	out          func(string)   // output sink (set by the server; nil-safe via send)
 }
 
@@ -94,6 +97,8 @@ type SavedPlayer struct {
 type Persistence interface {
 	Load(name string) (*SavedPlayer, bool, error)
 	Save(sp *SavedPlayer) error
+	// Top returns up to n characters ranked by level then XP (for the leaderboard).
+	Top(n int) ([]SavedPlayer, error)
 }
 
 // MemStore is an in-memory Persistence for tests and ephemeral runs.
@@ -113,4 +118,17 @@ func (s *MemStore) Save(sp *SavedPlayer) error {
 	cp := *sp
 	s.m[sp.Name] = &cp
 	return nil
+}
+
+// Top returns up to n characters ranked by level then XP.
+func (s *MemStore) Top(n int) ([]SavedPlayer, error) {
+	out := make([]SavedPlayer, 0, len(s.m))
+	for _, sp := range s.m {
+		out = append(out, *sp)
+	}
+	sortSavedByRank(out)
+	if len(out) > n {
+		out = out[:n]
+	}
+	return out, nil
 }

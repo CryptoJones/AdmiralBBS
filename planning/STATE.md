@@ -35,6 +35,12 @@ Gauntlet ICE** that morphs white shell → black core → lethal lock; and **PvP
 netrunning** — duel other runners in the deep Net, loser flatlines and winner
 siphons eddies. All persisted and tested.
 
+**S024 (Console Cowboy — social/depth, 2026-06-24)** — three more follow-ons:
+netrun **programs/demons** (`run` scalpel/hammer/leech/mirror/medic, RAM-costed,
+Mirror gives a timed damage shield); **crews** (`group`/`gsay`/`leave`, kill XP
+shared among crewmates in-room); and a **leaderboard** (`top`, via a new
+`Persistence.Top`). All tested (tests/cowboy_social_test.go) and CI-green.
+
 **S013 (file-library hardening + CI green)** — landed on `main @ e9d0dfd`.
 Atomic per-user upload quota (closes the TOCTOU race), duplicate-filename
 rejection, file-area search/sort/filter/delete, XMODEM upload byte-cap, and
