@@ -1,0 +1,11 @@
+-- Relax SSH-key uniqueness from "one account per key" to "one account per TIER
+-- per key": a given public key may be active on at most one SysOp-tier account
+-- AND at most one regular account. This lets an operator keep a SysOp account
+-- and a regular test account on the same key, while still stopping someone from
+-- spinning up many regular accounts on one key.
+--
+-- The old strict rule was a partial unique index (migration 004). A per-tier
+-- rule depends on the owning account's access level (which can change), so it
+-- can't be a static index — it's enforced in application code (store.Keys.Add,
+-- serialized by keyMu). Drop the index here.
+DROP INDEX IF EXISTS idx_user_key_active_fingerprint;

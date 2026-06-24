@@ -29,7 +29,12 @@ import (
 
 const sysopLevel = 100
 
+// version is the released BBS version (SemVer). Bump the PATCH on each merge;
+// MINOR for backward-compatible features, MAJOR for breaking changes.
+const version = "1.0.0"
+
 func main() {
+	showVersion := flag.Bool("version", false, "print version and exit")
 	telnetAddr := flag.String("telnet", ":2323", "telnet listen address (apply-only)")
 	sshAddr := flag.String("ssh", ":2222", "ssh listen address (members)")
 	hostKey := flag.String("hostkey", "ssh_host_ed25519_key", "ssh host key path")
@@ -51,6 +56,10 @@ func main() {
 	doorsDataFlag := flag.String("doors-data", "", "persistent door data dir (default <db-dir>/doors-data)")
 	cowboyAddr := flag.String("cowboy", "", "register 'Console Cowboy 2026' resident door at this addr (e.g. 127.0.0.1:4000)")
 	flag.Parse()
+	if *showVersion {
+		fmt.Println("AdmiralBBS " + version)
+		return
+	}
 
 	// Hardening posture: never run privileged (DECISIONS.md).
 	if os.Geteuid() == 0 {
@@ -73,6 +82,12 @@ func main() {
 	defer vault.Close()
 	os.Unsetenv("ADMIRALBBS_KEY") // shrink the window the secret sits in env
 
+	// Optional shared SysOp-panel password: a step-up secret prompted before the
+	// control panel opens (so an unattended logged-in SysOp session can't be used
+	// to change BBS settings). Empty = no extra gate.
+	sysopPanelPass := os.Getenv("ADMIRALBBS_SYSOP_PASS")
+	os.Unsetenv("ADMIRALBBS_SYSOP_PASS")
+
 	db, err := store.Open(*dbPath, vault)
 	if err != nil {
 		log.Fatalf("open database: %v", err)
@@ -93,6 +108,7 @@ func main() {
 		}
 		log.Printf("Console Cowboy 2026 resident door -> %s", *cowboyAddr)
 	}
+	log.Printf("AdmiralBBS %s starting", version)
 	log.Printf("database ready at %s (WAL, encrypted at rest)", *dbPath)
 
 	// Audit: encrypted + hash-chained JSONL is authoritative; session_log mirrors.
@@ -186,7 +202,7 @@ func main() {
 
 		enforceBudget(s, db, u, *dailyMinutes)
 		doorOpts := doors.Opts{RunAsUID: *doorUID, RunAsGID: *doorGID, Chroot: *doorChroot, NoNetwork: *doorNoNet, Isolate: *doorIsolate}
-		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts, node, doorsData, roster).Run(s)
+		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts, node, doorsData, roster, sysopPanelPass).Run(s)
 	}
 
 	var wg sync.WaitGroup

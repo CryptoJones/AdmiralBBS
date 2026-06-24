@@ -84,3 +84,37 @@ func TestKeyFingerprintUniqueUnderRace(t *testing.T) {
 }
 
 func handleN(i int) string { return "user" + string(rune('a'+i)) }
+
+// A key may map to ONE sysop-tier account AND ONE regular account, but not two
+// of the same tier — so an operator can keep a SysOp + a test user on one key.
+func TestKeySharedAcrossTiers(t *testing.T) {
+	s, _ := openTestStore(t)
+	keys := s.Keys()
+	line := genSSHKey(t)
+
+	admin, _ := s.Users().Create("admin", "", "", "")
+	s.Users().Approve(admin.ID, 100) // sysop tier
+	tester, _ := s.Users().Create("tester", "", "", "")
+	s.Users().Approve(tester.ID, 50) // regular tier
+
+	if _, err := keys.Add(admin.ID, line); err != nil {
+		t.Fatalf("sysop add: %v", err)
+	}
+	// Same key on a regular account is allowed (different tier).
+	if _, err := keys.Add(tester.ID, line); err != nil {
+		t.Fatalf("regular should be able to share the key with the sysop: %v", err)
+	}
+
+	// A second SYSOP on the same key is rejected (sysop slot taken).
+	admin2, _ := s.Users().Create("admin2", "", "", "")
+	s.Users().Approve(admin2.ID, 100)
+	if _, err := keys.Add(admin2.ID, line); !errors.Is(err, store.ErrKeyTaken) {
+		t.Fatalf("second sysop on the key: want ErrKeyTaken, got %v", err)
+	}
+	// A second REGULAR on the same key is rejected (regular slot taken).
+	tester2, _ := s.Users().Create("tester2", "", "", "")
+	s.Users().Approve(tester2.ID, 50)
+	if _, err := keys.Add(tester2.ID, line); !errors.Is(err, store.ErrKeyTaken) {
+		t.Fatalf("second regular on the key: want ErrKeyTaken, got %v", err)
+	}
+}
