@@ -9,6 +9,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,8 +24,9 @@ var migrationsFS embed.FS
 
 // Store owns the database handle and hands out repositories.
 type Store struct {
-	db    *sql.DB
-	vault *crypto.Vault
+	db       *sql.DB
+	vault    *crypto.Vault
+	filesDir string // sealed file-library blobs live here
 }
 
 // Open opens (creating if needed) the SQLite database at path with the agreed
@@ -50,7 +53,12 @@ func Open(path string, vault *crypto.Vault) (*Store, error) {
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
 
-	s := &Store{db: db, vault: vault}
+	filesDir := filepath.Join(filepath.Dir(path), "files")
+	if err := os.MkdirAll(filesDir, 0o700); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("create files dir: %w", err)
+	}
+	s := &Store{db: db, vault: vault, filesDir: filesDir}
 	if err := s.migrate(); err != nil {
 		db.Close()
 		return nil, err
