@@ -1,16 +1,29 @@
-# Run AdmiralBBS in a container:  docker compose up --build
-# State (SQLite DB, audit JSONL, SSH host key) persists in the named volume.
+# Run AdmiralBBS in a container:  ADMIRALBBS_KEY=... docker compose up --build
+# State (SQLite DB, audit JSONL, SSH host key, KDF salt) persists in the named
+# volume. The master key is injected from the host env and never written to disk.
 services:
   admiralbbs:
     build: .
     image: admiralbbs:latest
     container_name: admiralbbs
     restart: unless-stopped
+    # Encryption is mandatory — fail fast if the key isn't provided.
+    environment:
+      ADMIRALBBS_KEY: ${ADMIRALBBS_KEY:?set ADMIRALBBS_KEY in the host env (never commit it)}
     ports:
-      - "2323:2323"   # telnet
-      - "2222:2222"   # ssh
+      - "2323:2323"   # telnet (apply-only)
+      - "2222:2222"   # ssh (members)
     volumes:
-      - bbs-data:/home/bbs/data
+      - bbs-data:/home/bbs/data   # the only writable persistent state
+    # --- hardening (RISKS SEC-10) ---
+    read_only: true                 # immutable root filesystem
+    tmpfs:
+      - /tmp                        # door-game jail dirs (ephemeral, noexec-able)
+    cap_drop:
+      - ALL                         # drop every Linux capability
+    security_opt:
+      - no-new-privileges:true      # a door can never gain privileges
+    # runs as the non-root 'bbs' user (set in the Dockerfile)
 
 volumes:
   bbs-data:

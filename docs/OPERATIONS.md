@@ -1,0 +1,79 @@
+# Operations — AdmiralBBS
+
+> How to run, secure, and maintain AdmiralBBS. Encryption is mandatory: the
+> daemon refuses to start without `ADMIRALBBS_KEY`.
+
+## The master key
+
+- `ADMIRALBBS_KEY` is the startup secret. It is run through Argon2id (with a
+  persisted, non-secret salt at `<data>/key.salt`) to derive the in-memory
+  XChaCha20-Poly1305 key. The key is `mlock`'d and zeroed on exit, and is
+  **never written to the data volume**.
+- Supply it via the host environment or a Docker/secret manager — never commit
+  it, never bake it into an image, never paste it in chat.
+- **Use a strong, high-entropy secret.** The Argon2id KDF only slows an offline
+  guess of a weak secret; it is not a substitute for one.
+
+## Run natively
+
+```sh
+go build -o admiralbbs ./src/cmd/admiralbbs
+ADMIRALBBS_KEY='<strong-secret>' ./admiralbbs \
+  -telnet :2323 -ssh :2222 -db data/admiralbbs.db \
+  -audit data/audit.jsonl -salt data/key.salt \
+  -hostkey data/ssh_host_ed25519_key -art art/welcome.ans
+```
+
+Run as an unprivileged user (the daemon refuses to run as root).
+
+## Run in a container (hardened)
+
+```sh
+ADMIRALBBS_KEY='<strong-secret>' docker compose up --build
+```
+
+The compose file ships read-only root FS, `tmpfs /tmp` (door jails), `cap_drop:
+ALL`, `no-new-privileges`, a non-root user, and a persistent volume for state.
+For defence against a stolen disk, also place the host volume on an **encrypted
+filesystem** (LUKS / encrypted volume) — the app-level encryption protects
+content, the encrypted volume covers structural metadata too.
+
+## Threat model (be honest with yourself)
+
+- **Effective against offline access:** a stolen disk, copied volume, image
+  layer, backup, or stopped container is ciphertext without the key.
+- **NOT a defence against live root** on the running host — root can scrape the
+  in-memory key. Closing that needs hardware (TPM/HSM/enclave), out of scope.
+- Door games run sandboxed (scrubbed env, jail dir, rlimits, timeout, group
+  kill); for stronger isolation run them under a dedicated uid / container.
+
+## Key rotation runbook
+
+The master key encrypts PII, message/mail bodies, file blobs, and the audit
+trail. To rotate (e.g., suspected compromise):
+
+1. **Stop** the daemon.
+2. **Back up** the data dir.
+3. **Re-encrypt** with a one-off migration: open the DB + files with the OLD
+   `crypto.Vault`, decrypt every sealed field/blob and the audit JSONL, then
+   re-seal with a NEW vault (new `ADMIRALBBS_KEY` + regenerated `key.salt`).
+   (A `scripts/rekey` helper is the place for this; it walks `user`,
+   `membership`, `message`, `private_message`, `session_log.detail`, and the
+   `files/` blobs.)
+4. Replace `ADMIRALBBS_KEY` everywhere it is injected and **restart**.
+5. Verify: `VerifyAuditChain` passes and a member can log in.
+
+Until `scripts/rekey` exists, treat key rotation as a planned maintenance task,
+not an in-place hot swap — a new key cannot read data sealed with the old one.
+
+## Maintenance
+
+- CI (`.github/workflows/ci.yml`) runs build, vet, tests, and `govulncheck` on
+  every push/PR. GitHub push secret-scanning is the backstop against an
+  accidentally committed credential.
+- Audit integrity: the JSONL trail is hash-chained; the SysOp panel verifies it.
+  Investigate any "chain verify failed".
+
+---
+
+*Proudly Made in Nebraska. Go Big Red! 🌽 <https://xkcd.com/2347/>*
