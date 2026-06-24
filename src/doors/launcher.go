@@ -72,7 +72,16 @@ func Launch(sess io.ReadWriter, command string, args []string, drop DropInfo, op
 	cmd := exec.CommandContext(ctx, "/bin/sh", argv...)
 	cmd.Dir = jail
 	cmd.Env = scrubbedEnv(jail, opts.Term)
-	cmd.Stdin = sess
+	// Give the child stdin via an *os.File pipe (a real fd), NOT the session
+	// reader. If the session is cmd.Stdin, cmd.Wait blocks forever on the
+	// stdin-copy goroutine after the door exits — freezing the caller. We
+	// forward input ourselves; the child's stdout copy ends naturally on exit.
+	stdinR, stdinW, err := os.Pipe()
+	if err != nil {
+		return err
+	}
+	defer stdinR.Close()
+	cmd.Stdin = stdinR
 	cmd.Stdout = sess
 	cmd.Stderr = io.Discard
 
@@ -91,7 +100,15 @@ func Launch(sess io.ReadWriter, command string, args []string, drop DropInfo, op
 	}
 	cmd.WaitDelay = 3 * time.Second
 
-	return cmd.Run()
+	// Forward caller keystrokes to the door while it runs.
+	go func() {
+		io.Copy(stdinW, sess)
+		stdinW.Close()
+	}()
+
+	err = cmd.Run()
+	stdinW.Close() // stop forwarding; unblocks the door if it's reading
+	return err
 }
 
 // scrubbedEnv builds a minimal env from scratch — nothing inherited, so no

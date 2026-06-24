@@ -9,9 +9,16 @@ data layer, S003 2FA auth, S004 boards, S005 mail, S006 files, S007 sandboxed
 doors, S008 SysOp control panel, S009 hardening/deploy (CI + govulncheck clean +
 hardened container + ops/key-rotation runbook). All four founding features, the
 operator console, encryption in transit + at rest, and the SEC-1…13 register are
-realised. S010 (feature polish) then delivered all four follow-ons: per-user upload
-quotas, key rotation (cmd/rekey), door uid/namespace isolation (Linux), and
-XMODEM binary transfer. Nothing outstanding. Original active-sprint history below.
+realised. S010 (feature polish): per-user upload quotas, key rotation (cmd/rekey), door
+uid/namespace isolation (Linux), XMODEM transfer.
+
+**S011 (verification & fixes)** — a re-audit caught that "complete" was
+overclaimed: fixed a CRITICAL door-exit hang (session froze when a door exited),
+added the missing SysOp bootstrap (`cmd/sysopctl` — the panel was unreachable),
+added graceful shutdown, and added the integration coverage that was missing
+(`TestFullMemberJourney` driving the real menus end-to-end + door-through-launcher
+e2e + telnet IAC fuzz). Lesson: ship an end-to-end test of the real journey, not
+just unit tests, before calling anything done. Original active-sprint history below.
 
 ## Autonomous loop history
 
