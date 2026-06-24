@@ -180,6 +180,15 @@ func (w *World) Disconnect(p *Player) {
 	delete(w.byName, strings.ToLower(p.Name))
 }
 
+// SaveAll persists every connected player. Called on the world goroutine (the
+// server's periodic autosave + save-on-shutdown), so progress survives a server
+// restart/crash, not only a clean per-player disconnect.
+func (w *World) SaveAll() {
+	for _, p := range w.players {
+		w.save(p)
+	}
+}
+
 func (w *World) save(p *Player) {
 	_ = w.store.Save(&SavedPlayer{
 		Name: p.Name, Class: p.Class, Level: p.Level, XP: p.XP, Eddies: p.Eddies,
