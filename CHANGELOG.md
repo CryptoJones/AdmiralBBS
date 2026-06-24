@@ -13,6 +13,16 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [1.0.8] - 2026-06-24
+
+### Fixed
+- **Console Cowboy: combat output no longer eats your typing.** Async output
+  (combat/chat/room events) interleaved with the caller's in-progress input,
+  garbling commands like `flee`. The server now uses a managed prompt: each async
+  line wipes the current input row, prints, then redraws the prompt with the
+  caller's partial input intact (engine routes the status prompt through a
+  dedicated `prompter` sink). A full-screen scroll-region layout is the next step.
+
 ## [1.0.7] - 2026-06-24
 
 ### Added
@@ -125,7 +135,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.7...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v1.0.8...HEAD
+[1.0.8]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.8
 [1.0.7]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.7
 [1.0.6]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.6
 [1.0.5]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.0.5
