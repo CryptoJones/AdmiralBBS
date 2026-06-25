@@ -64,7 +64,7 @@ func checkUpdate(current, updateURL string) {
 
 // version is the released BBS version (SemVer). Bump the PATCH on each merge;
 // MINOR for backward-compatible features, MAJOR for breaking changes.
-const version = "2.0.3"
+const version = "2.0.4"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
@@ -161,6 +161,15 @@ func main() {
 		}
 		log.Printf("resident door %q -> %s/%s", parts[0], parts[1], parts[2])
 	}
+	// Seed the timeout settings from the flags on a fresh DB. The CLI flags are
+	// the defaults; once a SysOp edits them in the panel the stored value wins and
+	// persists across restarts.
+	if db.Settings().Get("idle_minutes", "") == "" {
+		_ = db.Settings().Set("idle_minutes", strconv.Itoa(int(idle.Minutes())))
+	}
+	if db.Settings().Get("daily_minutes", "") == "" {
+		_ = db.Settings().Set("daily_minutes", strconv.Itoa(*dailyMinutes))
+	}
 	checkUpdate(version, *updateURL)
 	log.Printf("AdmiralBBS %s starting", version)
 	log.Printf("database ready at %s (WAL, encrypted at rest)", *dbPath)
@@ -204,7 +213,9 @@ func main() {
 	mkSession := func(c transport.Conn) *session.Session {
 		id := fmt.Sprintf("s-%06d", counter.Add(1))
 		s := session.New(id, c, logger, nil)
-		s.WatchIdle(*idle)
+		// Idle timeout reads the live SysOp setting each session (the -idle flag is
+		// just the default on a fresh DB), so a SysOp change applies without restart.
+		s.WatchIdle(time.Duration(db.Settings().IdleMinutes(int(idle.Minutes()))) * time.Minute)
 		return s
 	}
 
@@ -302,7 +313,9 @@ func enforceBudget(s *session.Session, db *store.Store, u *store.User, defaultMi
 	}
 	budget := u.DailyMinutes
 	if budget <= 0 {
-		budget = defaultMinutes
+		// No per-user override: use the live SysOp setting (the -daily-minutes flag
+		// is the default), so changes apply to new sessions without a restart.
+		budget = db.Settings().DailyMinutes(defaultMinutes)
 	}
 	used, _ := db.SessionLog().MinutesToday(u.Handle)
 	remaining := float64(budget) - used

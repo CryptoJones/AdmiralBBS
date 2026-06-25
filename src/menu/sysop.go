@@ -64,6 +64,7 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sys
 		openReports, _ := st.Reports().OpenCount()
 		w.Printf("  [R] Abuse reports (%d open)\r\n", openReports)
 		w.Line("  [S] Branding & MOTD")
+		w.Line("  [T] Session timeouts")
 		w.Line("  [Q] Back to main menu")
 		w.Color(screen.Green)
 		w.Print("\r\nChoice: ")
@@ -105,6 +106,10 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sys
 			}
 		case 's':
 			if err := editSettings(s, st); err != nil {
+				return err
+			}
+		case 't':
+			if err := editTimeouts(s, st); err != nil {
 				return err
 			}
 		case 'q':
@@ -607,6 +612,58 @@ func banManagement(s *session.Session, st *store.Store, sysop *store.User) error
 
 // editSettings lets a SysOp customize the BBS name, tagline, and message of the
 // day (shown to callers before the menu).
+// editTimeouts lets a SysOp change the idle-disconnect timeout and the default
+// daily time budget at runtime. Both persist in the settings table and apply to
+// NEW sessions without a restart (the CLI flags only seed the defaults).
+func editTimeouts(s *session.Session, st *store.Store) error {
+	set := st.Settings()
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	w.Clear()
+	w.ColorLine(screen.Magenta, "Session Timeouts")
+	w.ColorLine(screen.Magenta, "----------------")
+	w.Printf("  Idle disconnect: %d min\r\n", set.IdleMinutes(10))
+	w.Printf("  Daily budget:    %d min  (members without a per-user override)\r\n", set.DailyMinutes(60))
+	w.Color(screen.Green)
+	w.Print("\r\nEdit [I]dle  [D]aily  [Q]uit: ")
+	w.Reset()
+	k, err := s.ReadKey()
+	if err != nil {
+		return err
+	}
+	switch toLower(k) {
+	case 'i':
+		if n, ok := promptMinutes(s, w, "New idle timeout in minutes (blank to cancel): "); ok {
+			_ = st.Settings().Set("idle_minutes", strconv.Itoa(n))
+			w.ColorLine(screen.Cyan, "Updated — applies to new sessions.")
+			_, _ = s.ReadKey()
+		}
+	case 'd':
+		if n, ok := promptMinutes(s, w, "New daily budget in minutes (blank to cancel): "); ok {
+			_ = st.Settings().Set("daily_minutes", strconv.Itoa(n))
+			w.ColorLine(screen.Cyan, "Updated — applies to new sessions.")
+			_, _ = s.ReadKey()
+		}
+	}
+	return nil
+}
+
+// promptMinutes prompts for a positive integer; (n, true) on a valid entry,
+// (0, false) on blank/cancel or invalid.
+func promptMinutes(s *session.Session, w *screen.Writer, label string) (int, bool) {
+	v := strings.TrimSpace(prompt(s, w, label))
+	if v == "" {
+		return 0, false
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		w.ColorLine(screen.Red, "Enter a positive number of minutes.")
+		_, _ = s.ReadKey()
+		return 0, false
+	}
+	return n, true
+}
+
 func editSettings(s *session.Session, st *store.Store) error {
 	set := st.Settings()
 	cap := s.Cap()

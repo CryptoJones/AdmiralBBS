@@ -23,6 +23,23 @@ func openTestStore(t *testing.T) (*store.Store, *crypto.Vault) {
 	return s, v
 }
 
+func TestSettingsTimeoutGetters(t *testing.T) {
+	st, _ := openTestStore(t)
+	set := st.Settings()
+	if set.IdleMinutes(10) != 10 || set.DailyMinutes(60) != 60 {
+		t.Fatal("unset getters should return the provided defaults")
+	}
+	_ = set.Set("idle_minutes", "3")
+	_ = set.Set("daily_minutes", "120")
+	if set.IdleMinutes(10) != 3 || set.DailyMinutes(60) != 120 {
+		t.Fatalf("stored values should win: idle=%d daily=%d", set.IdleMinutes(10), set.DailyMinutes(60))
+	}
+	_ = set.Set("idle_minutes", "garbage")
+	if set.IdleMinutes(10) != 10 {
+		t.Fatalf("invalid stored value should fall back to default, got %d", set.IdleMinutes(10))
+	}
+}
+
 func TestMigrateSetsUserVersionAndIsIdempotent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "test.db")
 	s, err := store.Open(path, testVault(t))
