@@ -93,6 +93,7 @@ func playDoor(s *session.Session, u *store.User, d *store.Door, base doors.Opts,
 			err = derr
 		} else {
 			printLaunch(rc.Version)
+			rc.SendHandle(u.Handle) // door defaults its name prompt to the BBS handle (if it asked)
 			err = rc.Relay(s.Raw())
 			rc.Close()
 		}
