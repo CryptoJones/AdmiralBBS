@@ -63,23 +63,41 @@ func playDoor(s *session.Session, u *store.User, d *store.Door, base doors.Opts,
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
 	w.Clear()
-	w.Color(screen.Magenta)
-	w.Print("Launching ")
-	w.SafePrint(d.Name)
-	w.Printf(" (node %d)...\r\n\r\n", node)
-	w.Reset()
-	s.Activity("door-launch", d.Name)
+	// printLaunch renders the "Launching <name> [vX.Y.Z] (node N)..." banner.
+	// The version is shown only when the door advertised one via the resident
+	// handshake (ABBS Door Spec §2.2); subprocess doors have no version channel.
+	printLaunch := func(ver string) {
+		w.Color(screen.Magenta)
+		w.Print("Launching ")
+		w.SafePrint(d.Name)
+		if ver != "" {
+			w.Printf(" v%s", ver)
+		}
+		w.Printf(" (node %d)...\r\n\r\n", node)
+		w.Reset()
+		s.Activity("door-launch", d.Name)
+	}
 
 	var err error
 	if d.Kind == store.KindResident {
 		// Persistent multiplayer server (MajorMUD-style): relay to the one
-		// running game so all callers share the world.
+		// running game so all callers share the world. Dial first so we can read
+		// the door's optional version handshake and surface it on the launch line.
 		net := d.Network
 		if net == "" {
 			net = "tcp"
 		}
-		err = doors.Bridge(s.Raw(), net, d.Address, 10*time.Second)
+		rc, derr := doors.DialResident(net, d.Address, 10*time.Second, 1500*time.Millisecond)
+		if derr != nil {
+			printLaunch("")
+			err = derr
+		} else {
+			printLaunch(rc.Version)
+			err = rc.Relay(s.Raw())
+			rc.Close()
+		}
 	} else {
+		printLaunch("")
 		slug := slugify(d.Name)
 		opts := base
 		opts.Timeout = 15 * time.Minute

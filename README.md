@@ -56,6 +56,17 @@ runnable examples — is published at
 **[ABBS-Door-Specification](https://github.com/CryptoJones/ABBS-Door-Specification)**
 (MIT-licensed; commercial and closed-source doors are welcome).
 
+### Available door games
+
+| Door | Kind | Description |
+|------|------|-------------|
+| **[Chrome Circuit Cowboys (C³)](https://github.com/CryptoJones/ChromeCircuitCowboys)** | resident (multiplayer) | A generic-cyberpunk MUD — jack into the Net, level up, breach the ICE, duel other runners. |
+
+**Want your door listed here?** It must conform to the
+**[ABBS Door Specification](https://github.com/CryptoJones/ABBS-Door-Specification)** —
+build to the spec, publish your repo, then open a PR adding a row above (or an
+issue) and we'll add it.
+
 ## Status
 
 See [`planning/STATE.md`](planning/STATE.md) for the current sprint and next action.
