@@ -33,8 +33,8 @@ func TestMigrateSetsUserVersionAndIsIdempotent(t *testing.T) {
 	if err := s.DB().QueryRow("PRAGMA user_version").Scan(&ver); err != nil {
 		t.Fatal(err)
 	}
-	if ver != 10 {
-		t.Fatalf("user_version = %d, want 10 (001..009 + 010_settings)", ver)
+	if ver != 11 {
+		t.Fatalf("user_version = %d, want 11 (001..010 + 011_installed_doors)", ver)
 	}
 	var mode string
 	if err := s.DB().QueryRow("PRAGMA journal_mode").Scan(&mode); err != nil {
