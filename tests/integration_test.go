@@ -72,7 +72,7 @@ func TestSpineEndToEnd_ANSI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	conn := newFakeConn("M G", "ansi", transport.WindowSize{Cols: 80, Rows: 25})
+	conn := newFakeConn("M\r\nG\r\n", "ansi", transport.WindowSize{Cols: 80, Rows: 25})
 	s := session.New("s-000001", conn, logger, fixedClock(time.Unix(1_700_000_000, 0)))
 	if err := menu.Demo("").Run(s); err != nil {
 		t.Fatalf("menu run: %v", err)
@@ -118,7 +118,7 @@ func TestSpineEndToEnd_BWNoEscapes(t *testing.T) {
 	v := testVault(t)
 	auditPath := filepath.Join(t.TempDir(), "audit.jsonl")
 	logger, _ := audit.New(auditPath, v)
-	conn := newFakeConn("G", "dumb", transport.WindowSize{Cols: 80})
+	conn := newFakeConn("G\r\n", "dumb", transport.WindowSize{Cols: 80})
 	s := session.New("s-1", conn, logger, fixedClock(time.Unix(1_700_000_000, 0)))
 	_ = menu.Demo("").Run(s)
 	s.Close()

@@ -13,6 +13,13 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [2.0.5] - 2026-06-25
+
+### Changed
+- **The main menu now waits for Enter** before acting on a command (type the
+  letter, press Enter) — matching the rest of the BBS, which is line-based
+  everywhere else. A bare Enter just redraws.
+
 ## [2.0.4] - 2026-06-25
 
 ### Added
@@ -327,7 +334,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.4...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.5...HEAD
+[2.0.5]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.5
 [2.0.4]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.4
 [2.0.3]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.3
 [2.0.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.2

@@ -122,13 +122,19 @@ var ErrDisconnected = errors.New("caller disconnected")
 func (m *Menu) Run(s *session.Session) error {
 	for {
 		m.render(s)
-		key, err := s.ReadKey()
+		// Read a full line (CR-terminated) so the main menu matches the rest of
+		// the BBS — you type the command letter and press Enter.
+		line, err := s.ReadLine()
 		if err != nil {
 			return ErrDisconnected
 		}
-		item := m.find(key)
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue // bare Enter: redraw
+		}
+		item := m.find(line[0])
 		if item == nil {
-			continue // unknown key: redraw
+			continue // unknown command: redraw
 		}
 		out, err := item.Action(s)
 		if err != nil {
