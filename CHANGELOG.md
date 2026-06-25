@@ -13,6 +13,25 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [2.0.1] - 2026-06-24
+
+### Added
+- **Resident-door version handshake.** The bridge reads a door's optional version
+  handshake on connect and shows it on the launch line —
+  `Launching Chrome Circuit Cowboys v1.0.0 (node 1)...` (ABBS Door Spec §2.2).
+- **`sysopctl addkey <handle> <pubkey-file|->`** — register an additional SSH key
+  on an existing account (e.g. a second device) without re-bootstrapping.
+
+### Changed
+- **`sysopctl approve`/`promote` now default to a regular member (level 1)**, not
+  SysOp — granting SysOp requires an explicit `approve <handle> 100`. (A bare
+  `approve` used to silently grant full admin.)
+
+### Internal
+- Groundwork for installing doors from a forge **release URL** (platform-aware
+  asset selection, supervised door processes, persistence) — not yet wired to a
+  SysOp action.
+
 ## [2.0.0] - 2026-06-24
 
 **The bundled door game is gone — extracted to its own repo.** Chrome Circuit
@@ -280,7 +299,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.1
 [2.0.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.0
 [1.6.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.6.0
 [1.5.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v1.5.0
