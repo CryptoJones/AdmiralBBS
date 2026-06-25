@@ -112,7 +112,7 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sys
 			if err := editTimeouts(s, st); err != nil {
 				return err
 			}
-		case 'q':
+		case 'q', 'x':
 			return nil
 		}
 	}
@@ -483,7 +483,7 @@ func auditViewer(s *session.Session, st *store.Store, auditPath string) error {
 			page += 10
 		case 'r', 'R', '<', '-':
 			page -= 10
-		case 'q', 'Q':
+		case 'q', 'Q', 'x', 'X':
 			return nil
 		}
 		if page > totalPages-1 {

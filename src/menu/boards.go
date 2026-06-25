@@ -52,7 +52,7 @@ func RunBoards(s *session.Session, st *store.Store, u *store.User, sysopPass str
 			return err
 		}
 		in = strings.TrimSpace(in)
-		if in == "" || strings.EqualFold(in, "q") {
+		if in == "" || strings.EqualFold(in, "q") || strings.EqualFold(in, "x") {
 			return nil
 		}
 		if isSysOp && strings.EqualFold(in, "n") {
@@ -189,7 +189,7 @@ func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.
 		}
 		in = strings.TrimSpace(in)
 		switch {
-		case in == "" || strings.EqualFold(in, "q"):
+		case in == "" || strings.EqualFold(in, "q") || strings.EqualFold(in, "x"):
 			markRead()
 			return nil
 		case in == ">":

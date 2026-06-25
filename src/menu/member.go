@@ -28,7 +28,8 @@ func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts 
 			items = append(items, Item{Key: 'O', Label: "Message of the Day (re-read)", Action: motdAction(st)})
 		}
 		if u.AccessLevel >= CoSysOpLevel {
-			items = append(items, Item{Key: 'X', Label: "SysOp Control Panel", Action: sysopAction(st, u, auditPath, sysopPass, installer)})
+			// [S]ysOp — never [X]; X (and Q) are reserved as quit keys (see OnQuit).
+			items = append(items, Item{Key: 'S', Label: "SysOp Control Panel", Action: sysopAction(st, u, auditPath, sysopPass, installer)})
 		}
 		items = append(items, Item{Key: 'G', Label: "Goodbye / Logoff", Action: logoffAction(st)})
 
@@ -37,6 +38,8 @@ func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts 
 		m.Banner = BBSBanner(name, tagline) // shown unless a custom -art is supplied
 		m.Items = items
 	}
+	// X and Q always quit a menu; on the top-level menu that means logoff.
+	m.OnQuit = logoffAction(st)
 	m.Refresh() // initial populate
 	return m
 }

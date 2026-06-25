@@ -64,7 +64,7 @@ func checkUpdate(current, updateURL string) {
 
 // version is the released BBS version (SemVer). Bump the PATCH on each merge;
 // MINOR for backward-compatible features, MAJOR for breaking changes.
-const version = "2.0.6"
+const version = "2.0.7"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version and exit")
