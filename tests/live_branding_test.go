@@ -17,7 +17,7 @@ func TestMenuBrandingUpdatesLive(t *testing.T) {
 	s.Settings().Set("tagline", "old tagline")
 	u, _ := s.Users().Create("alice", "", "", "")
 
-	m := menu.Member(s, u, "", "", doors.Opts{}, 1, "", nil, "")
+	m := menu.Member(s, u, "", "", doors.Opts{}, 1, "", nil, "", nil)
 	if m.Refresh == nil {
 		t.Fatal("main menu should have a Refresh hook")
 	}

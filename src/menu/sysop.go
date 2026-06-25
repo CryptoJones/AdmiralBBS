@@ -24,7 +24,7 @@ func sysopPassOK(provided, configured string) bool {
 // on every action. If sysopPass is non-empty it is a SHARED step-up secret that
 // must be entered before the panel opens — so an unattended logged-in SysOp
 // session can't be used to change BBS settings by someone who doesn't know it.
-func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sysopPass string) error {
+func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sysopPass string, installer *DoorInstaller) error {
 	if u.AccessLevel < CoSysOpLevel {
 		return nil // defence in depth — the menu shouldn't have offered it
 	}
@@ -56,6 +56,9 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sys
 		w.Printf("  [M] Membership queue (%d pending)\r\n", len(pending))
 		w.Line("  [U] User management")
 		w.Line("  [C] Create area / register door")
+		if installer != nil {
+			w.Line("  [I] Install door from release URL")
+		}
 		w.Line("  [A] Audit log viewer")
 		w.Line("  [B] IP banlist")
 		openReports, _ := st.Reports().OpenCount()
@@ -82,6 +85,12 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sys
 			if err := contentManagement(s, st); err != nil {
 				return err
 			}
+		case 'i':
+			if installer != nil {
+				if err := installDoorScreen(s, st, installer); err != nil {
+					return err
+				}
+			}
 		case 'a':
 			if err := auditViewer(s, st, auditPath); err != nil {
 				return err
@@ -102,6 +111,79 @@ func RunSysOp(s *session.Session, st *store.Store, u *store.User, auditPath, sys
 			return nil
 		}
 	}
+}
+
+// installDoorScreen lets a SysOp add a resident door by pointing the BBS at a
+// forge release URL. The BBS downloads the binary matching ITS OWN OS/arch, runs
+// it supervised, and registers it. Running a downloaded binary is a trust
+// decision, so this is SysOp-gated.
+func installDoorScreen(s *session.Session, st *store.Store, installer *DoorInstaller) error {
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	w.Clear()
+	w.ColorLine(screen.Magenta, "Install door from release URL")
+	w.ColorLine(screen.Magenta, "-----------------------------")
+	w.Line("The BBS downloads the binary built for THIS server's OS/arch, runs it")
+	w.Line("supervised, and registers it. Only install doors you trust.")
+	w.Print("\r\n")
+
+	if list, _ := st.InstalledDoors().List(); len(list) > 0 {
+		w.ColorLine(screen.Cyan, "Already installed:")
+		for _, d := range list {
+			w.Printf("  %s (%s) @ %s\r\n", d.Name, d.Version, d.Address)
+		}
+		w.Print("\r\n")
+	}
+
+	w.Color(screen.Green)
+	w.Print("Door name (blank to cancel): ")
+	w.Reset()
+	name, err := s.ReadLine()
+	if err != nil {
+		return err
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil
+	}
+
+	w.Color(screen.Green)
+	w.Print("Release URL (forge releases JSON, e.g. .../releases/latest): ")
+	w.Reset()
+	url, err := s.ReadLine()
+	if err != nil {
+		return err
+	}
+	url = strings.TrimSpace(url)
+	if url == "" {
+		w.ColorLine(screen.Red, "No URL — cancelled.")
+		_, _ = s.ReadKey()
+		return nil
+	}
+
+	w.Color(screen.Green)
+	w.Print("Min access level [0]: ")
+	w.Reset()
+	lvlStr, err := s.ReadLine()
+	if err != nil {
+		return err
+	}
+	minLevel := 0
+	if v, e := strconv.Atoi(strings.TrimSpace(lvlStr)); e == nil {
+		minLevel = v
+	}
+
+	w.ColorLine(screen.Cyan, "Fetching + downloading — this can take a moment...")
+	s.Activity("door-install", name+" <- "+url)
+	ver, ierr := installer.Install(name, url, minLevel)
+	if ierr != nil {
+		w.ColorLine(screen.Red, "Install failed: "+ierr.Error())
+		_, _ = s.ReadKey()
+		return nil
+	}
+	w.ColorLine(screen.Green, "Installed + launched: "+name+" "+ver+" — callers can play it now.")
+	_, _ = s.ReadKey()
+	return nil
 }
 
 func membershipQueue(s *session.Session, st *store.Store, sysop *store.User) error {

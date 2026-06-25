@@ -269,7 +269,7 @@ func main() {
 		}
 
 		doorOpts := doors.Opts{RunAsUID: *doorUID, RunAsGID: *doorGID, Chroot: *doorChroot, NoNetwork: *doorNoNet, Isolate: *doorIsolate}
-		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts, node, doorsData, roster, sysopPanelPass).Run(s)
+		_ = menu.Member(db, u, *artPath, *auditPath, doorOpts, node, doorsData, roster, sysopPanelPass, doorInstaller).Run(s)
 	}
 
 	var wg sync.WaitGroup

@@ -68,7 +68,7 @@ func TestMenuShowsCustomBranding(t *testing.T) {
 	u, _ := s.Users().Create("alice", "", "", "") // regular (no SysOp item)
 
 	out, buf := sinkSession(t, s)
-	m := menu.Member(s, u, "", "", doors.Opts{}, 1, "", nil, "")
+	m := menu.Member(s, u, "", "", doors.Opts{}, 1, "", nil, "", nil)
 	_ = m.Run(out)
 	got := buf()
 	if !strings.Contains(got, "NeonNet :: Main Menu") || !strings.Contains(got, "jack in, choom") {
