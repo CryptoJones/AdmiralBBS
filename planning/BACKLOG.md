@@ -65,6 +65,21 @@ All three landed on `main`. The moderation gap CJ surfaced is closed.
   within 15 min of the last (`store.Anomalies` repo for retrieval). SysOp audit
   viewer shows recent flags. Never blocks — visibility only. Tested.
 
+## New work (2026-06-25)
+
+- [x] **Message board: SysOp creates a new board category** — DONE (v2.0.6,
+  `main`). [#2](https://github.com/CryptoJones/AdmiralBBS/issues/2). `[N]ew board`
+  in the Message Boards menu (SysOp-only), password-gated on the configured SysOp
+  step-up secret before the category is created.
+- [x] **Add points to a user's stats** — DONE (v2.0.6, `main`).
+  [#3](https://github.com/CryptoJones/AdmiralBBS/issues/3). `points` column
+  (migration 012), `Users.AddPoints`, SysOp `[A]ward points` action, and a "Your
+  Stats" block on the profile screen. Scope: SysOp-awarded (earned-through-
+  activity left as a future extension).
+- [x] **Mail: "look" feature at the TO prompt** — DONE (v2.0.6, `main`).
+  [#4](https://github.com/CryptoJones/AdmiralBBS/issues/4). `?` at the To: prompt
+  opens a paged member directory to pick a recipient by number.
+
 ## Decided NON-goals (do not build)
 
 - **Password rotation policy** — discredited practice (NIST dropped it); none

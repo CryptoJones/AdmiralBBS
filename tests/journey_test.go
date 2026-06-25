@@ -80,7 +80,7 @@ func TestFullMemberJourney(t *testing.T) {
 
 	// 4) Post to the first board: pick area 1, [P]ost subject+body, quit out.
 	run("alice", false, "1\np\nHello BBS\nfirst post\n.\nq\nq\n", func(sess *session.Session) {
-		if err := menu.RunBoards(sess, s, alice); err != nil {
+		if err := menu.RunBoards(sess, s, alice, ""); err != nil {
 			t.Fatalf("boards: %v", err)
 		}
 	})

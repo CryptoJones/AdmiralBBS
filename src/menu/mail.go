@@ -156,22 +156,104 @@ func reportUser(s *session.Session, st *store.Store, u *store.User, targetID int
 }
 
 func composeMail(s *session.Session, st *store.Store, u *store.User, handles *handleCache) error {
+	recipient, err := pickRecipient(s, st, u)
+	if err != nil {
+		return err
+	}
+	if recipient == nil {
+		return nil // cancelled
+	}
+	return sendMail(s, st, u, recipient.ID, "")
+}
+
+// pickRecipient resolves the "To:" recipient. The caller can type a handle, or
+// "?" to LOOK UP the member directory when they don't know the exact handle —
+// they pick from a paged list instead. Returns (nil, nil) on cancel.
+func pickRecipient(s *session.Session, st *store.Store, u *store.User) (*store.User, error) {
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
 	w.Print("\r\n")
 	w.Color(screen.Green)
-	w.Print("To (handle): ")
+	w.Print("To (handle, or ? to look up): ")
 	w.Reset()
 	to, err := s.ReadLine()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	recipient, err := st.Users().ByHandle(strings.TrimSpace(to))
+	to = strings.TrimSpace(to)
+	if to == "" {
+		return nil, nil
+	}
+	if to == "?" {
+		return lookupUser(s, st, u)
+	}
+	recipient, err := st.Users().ByHandle(to)
 	if err != nil {
-		w.ColorLine(screen.Red, "no such user")
-		return nil
+		w.ColorLine(screen.Red, "no such user — type ? to look up the directory")
+		return nil, nil
 	}
-	return sendMail(s, st, u, recipient.ID, "")
+	return recipient, nil
+}
+
+// lookupUser shows a paged directory of approved members (excluding the caller)
+// so someone who doesn't know a handle can pick a recipient by number.
+func lookupUser(s *session.Session, st *store.Store, u *store.User) (*store.User, error) {
+	all, err := st.Users().ListByStatus(store.StatusApproved)
+	if err != nil {
+		return nil, err
+	}
+	dir := all[:0]
+	for _, m := range all {
+		if m.ID != u.ID {
+			dir = append(dir, m)
+		}
+	}
+	if len(dir) == 0 {
+		cap := s.Cap()
+		w := screen.New(s, cap.ANSI, cap.Cols)
+		w.ColorLine(screen.Red, "no other members to message yet")
+		_, _ = s.ReadKey()
+		return nil, nil
+	}
+	page := 0
+	for {
+		cap := s.Cap()
+		w := screen.New(s, cap.ANSI, cap.Cols)
+		lo, hi, pages := pageWindow(len(dir), page)
+		page = clampPage(page, pages)
+		w.Clear()
+		w.ColorLine(screen.Cyan, "Member Directory")
+		w.ColorLine(screen.Cyan, "----------------")
+		for i := lo; i < hi; i++ {
+			w.Color(screen.Yellow)
+			w.Printf("  %d) ", i+1)
+			w.Color(screen.White)
+			w.SafePrint(dir[i].Handle)
+			w.Reset()
+			w.Print("\r\n")
+		}
+		pageFooter(w, page, pages)
+		w.Color(screen.Green)
+		w.Print("\r\n[#] pick  [>]/[<] page  [Q] cancel: ")
+		w.Reset()
+		in, err := s.ReadLine()
+		if err != nil {
+			return nil, err
+		}
+		in = strings.TrimSpace(in)
+		switch {
+		case in == "" || strings.EqualFold(in, "q"):
+			return nil, nil
+		case in == ">":
+			page++
+		case in == "<":
+			page--
+		default:
+			if n, perr := strconv.Atoi(in); perr == nil && n >= 1 && n <= len(dir) {
+				return dir[n-1], nil
+			}
+		}
+	}
 }
 
 func sendMail(s *session.Session, st *store.Store, u *store.User, toID int64, presetSubject string) error {

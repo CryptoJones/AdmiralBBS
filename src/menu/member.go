@@ -17,7 +17,7 @@ func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts 
 	// member logs out and the menu is rebuilt.
 	m.Refresh = func() {
 		items := []Item{
-			{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u)},
+			{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u, sysopPass)},
 			{Key: 'E', Label: "Private Mail", Action: mailAction(st, u)},
 			{Key: 'F', Label: "File Library", Action: filesAction(st, u)},
 			{Key: 'D', Label: "Door Games", Action: doorsAction(st, u, doorOpts, node, doorsData)},
@@ -88,9 +88,9 @@ func profileAction(st *store.Store, u *store.User) Action {
 	}
 }
 
-func boardsAction(st *store.Store, u *store.User) Action {
+func boardsAction(st *store.Store, u *store.User, sysopPass string) Action {
 	return func(s *session.Session) (Outcome, error) {
-		if err := RunBoards(s, st, u); err != nil {
+		if err := RunBoards(s, st, u, sysopPass); err != nil {
 			return Logoff, err
 		}
 		return Continue, nil

@@ -27,6 +27,7 @@ type User struct {
 	AccessLevel  int
 	Status       string
 	DailyMinutes int
+	Points       int
 	CreatedAt    time.Time
 	LastLoginAt  *time.Time
 }
@@ -62,7 +63,7 @@ func (r *Users) Create(handle, passwordHash, realName, email string) (*User, err
 	return r.ByID(id)
 }
 
-const userCols = `id, handle, password_hash, real_name, email, access_level, status, daily_minutes, created_at, last_login_at`
+const userCols = `id, handle, password_hash, real_name, email, access_level, status, daily_minutes, points, created_at, last_login_at`
 
 func (r *Users) scan(row interface{ Scan(...any) error }) (*User, error) {
 	var u User
@@ -70,7 +71,7 @@ func (r *Users) scan(row interface{ Scan(...any) error }) (*User, error) {
 	var lastLogin sql.NullString
 	var encName, encEmail string
 	if err := row.Scan(&u.ID, &u.Handle, &u.PasswordHash, &encName, &encEmail,
-		&u.AccessLevel, &u.Status, &u.DailyMinutes, &created, &lastLogin); err != nil {
+		&u.AccessLevel, &u.Status, &u.DailyMinutes, &u.Points, &created, &lastLogin); err != nil {
 		return nil, err
 	}
 	var err error
@@ -130,6 +131,17 @@ func (r *Users) Approve(id int64, accessLevel int) error {
 func (r *Users) SetDailyMinutes(id int64, minutes int) error {
 	_, err := r.st.db.Exec(`UPDATE user SET daily_minutes = ? WHERE id = ?`, minutes, id)
 	return err
+}
+
+// AddPoints adjusts a user's points by delta (which may be negative to dock
+// points) atomically, and returns the resulting total. SysOp-driven.
+func (r *Users) AddPoints(id int64, delta int) (int, error) {
+	if _, err := r.st.db.Exec(`UPDATE user SET points = points + ? WHERE id = ?`, delta, id); err != nil {
+		return 0, err
+	}
+	var total int
+	err := r.st.db.QueryRow(`SELECT points FROM user WHERE id = ?`, id).Scan(&total)
+	return total, err
 }
 
 // All lists every user, oldest first (SysOp user management).

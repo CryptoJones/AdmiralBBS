@@ -88,7 +88,7 @@ func center(s string, width int) string {
 }
 
 // ShowMOTD displays the message of the day and waits for the caller to press
-// SPACE to confirm they've read it (they can re-read it from the main menu if
+// ANY key to confirm they've read it (they can re-read it from the main menu if
 // they blew past it).
 func ShowMOTD(s *session.Session, motd string) error {
 	cap := s.Cap()
@@ -101,17 +101,13 @@ func ShowMOTD(s *session.Session, motd string) error {
 		w.Print("\r\n")
 	}
 	w.Color(screen.Green)
-	w.Print("\r\nPress [SPACE] to continue...")
+	w.Print("\r\nPress any key to continue...")
 	w.Reset()
-	for {
-		k, err := s.ReadKey()
-		if err != nil {
-			return err
-		}
-		if k == ' ' {
-			return nil
-		}
+	// Any key dismisses the MOTD (not just SPACE).
+	if _, err := s.ReadKey(); err != nil {
+		return err
 	}
+	return nil
 }
 
 // ErrDisconnected is returned when the caller drops mid-menu.
