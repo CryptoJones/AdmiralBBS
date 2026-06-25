@@ -40,7 +40,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) == 0 {
-		log.Fatal("usage: sysopctl [-db ...] [-salt ...] list | approve <handle> [level=1; 100=SysOp] | promote <handle> [level=1; 100=SysOp] | bootstrap <handle> <pubkey-file|-> [level]")
+		log.Fatal("usage: sysopctl [-db ...] [-salt ...] list | approve <handle> [level=1; 100=SysOp] | promote <handle> [level=1; 100=SysOp] | bootstrap <handle> <pubkey-file|-> [level] | addkey <handle> <pubkey-file|->")
 	}
 
 	secret := os.Getenv("ADMIRALBBS_KEY")
@@ -193,6 +193,40 @@ func main() {
 		}
 		fmt.Printf("SysOp %q is ready at access level %d (password set, key registered).\n", handle, level)
 		fmt.Println("Log in over SSH with that key + password — no onboarding token needed.")
+
+	case "addkey":
+		// addkey <handle> <pubkey-file|-> — register an ADDITIONAL SSH key on an
+		// existing account (e.g. a second device). Unlike bootstrap it touches
+		// neither the password nor the access level.
+		if len(args) < 3 {
+			log.Fatalf("usage: sysopctl addkey <handle> <pubkey-file|->")
+		}
+		handle := args[1]
+		var keyBytes []byte
+		if args[2] == "-" {
+			keyBytes, err = io.ReadAll(os.Stdin)
+		} else {
+			keyBytes, err = os.ReadFile(args[2])
+		}
+		if err != nil {
+			log.Fatalf("read public key: %v", err)
+		}
+		pubLine := strings.TrimSpace(string(keyBytes))
+		if err := store.ValidatePublicKey(pubLine); err != nil {
+			log.Fatalf("invalid SSH public key: %v", err)
+		}
+		u, uerr := db.Users().ByHandle(handle)
+		if uerr != nil {
+			log.Fatalf("no such user %q: %v", handle, uerr)
+		}
+		k, kerr := db.Keys().Add(u.ID, pubLine)
+		if errors.Is(kerr, store.ErrKeyTaken) {
+			log.Fatal("that SSH key is already registered (to this or another account)")
+		}
+		if kerr != nil {
+			log.Fatalf("add key: %v", kerr)
+		}
+		fmt.Printf("registered SSH key %s on %q.\n", k.Fingerprint, handle)
 
 	default:
 		log.Fatalf("unknown command %q", args[0])
