@@ -13,6 +13,27 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [2.0.6] - 2026-06-25
+
+### Added
+- **Caller points on a member stats view.** Accounts now carry a `points` score
+  (migration 012). A new **`[A]ward points`** action in the SysOp user-management
+  panel adds or docks points (audited), the user list shows each member's total,
+  and a member's **My SSH Keys / Profile** screen opens with a "Your Stats" block
+  (handle, access level, points, member-since). Closes #3.
+- **SysOp can create a board category from the board menu.** SysOps see an
+  **`[N]ew board`** option in Message Boards that prompts for name, description,
+  and minimum access level. It is **password-gated**: when a SysOp step-up secret
+  (`ADMIRALBBS_SYSOP_PASS`) is configured, it must be re-entered and verified
+  before the board is created. Closes #2.
+- **Mail "look up" at the To: prompt.** Composing mail, the recipient prompt now
+  accepts **`?`** to browse a paged member directory and pick a recipient by
+  number — for when you don't know someone's exact handle. Closes #4.
+
+### Changed
+- **The message of the day is dismissed by any key**, not only SPACE
+  (CryptoJones/ChromeCircuitCowboys#3 — the MOTD lives here).
+
 ## [2.0.5] - 2026-06-25
 
 ### Changed

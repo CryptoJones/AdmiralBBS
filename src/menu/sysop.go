@@ -286,7 +286,7 @@ func userManagement(s *session.Session, st *store.Store) error {
 		return err
 	}
 	for i, u := range users {
-		w.Printf("  %d) %-16s %-9s lvl:%-3d %dmin/day\r\n", i+1, trunc(u.Handle, 16), u.Status, u.AccessLevel, u.DailyMinutes)
+		w.Printf("  %d) %-16s %-9s lvl:%-3d %dmin/day  %dpts\r\n", i+1, trunc(u.Handle, 16), u.Status, u.AccessLevel, u.DailyMinutes, u.Points)
 	}
 	w.Color(screen.Green)
 	w.Print("\r\nUser # to manage (or [Q]): ")
@@ -300,12 +300,23 @@ func userManagement(s *session.Session, st *store.Store) error {
 		return nil
 	}
 	target := users[n-1]
-	w.Printf("\r\n[L]evel  [S]uspend  [R]einstate  [T]ime budget  [P] clear password  [Q]: ")
+	w.Printf("\r\n[L]evel  [S]uspend  [R]einstate  [T]ime budget  [A]ward points  [P] clear password  [Q]: ")
 	act, err := s.ReadKey()
 	if err != nil {
 		return err
 	}
 	switch toLower(act) {
+	case 'a':
+		w.Printf("\r\nPoints to award %s (negative to dock): ", target.Handle)
+		v, _ := s.ReadLine()
+		if delta, e := strconv.Atoi(strings.TrimSpace(v)); e == nil && delta != 0 {
+			if total, e := st.Users().AddPoints(target.ID, delta); e == nil {
+				s.Activity("award-points", fmt.Sprintf("%+d -> %d for %s", delta, total, target.Handle))
+				w.ColorLine(screen.Cyan, fmt.Sprintf("Awarded %+d. New total: %d.", delta, total))
+			} else {
+				w.ColorLine(screen.Red, "could not update points")
+			}
+		}
 	case 'l':
 		w.Print("\r\nNew access level: ")
 		v, _ := s.ReadLine()

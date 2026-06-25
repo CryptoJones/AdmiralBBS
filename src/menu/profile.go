@@ -18,6 +18,15 @@ func RunProfile(s *session.Session, st *store.Store, u *store.User) error {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
 		w.Clear()
+		// Stats — re-read from the store so SysOp-awarded points show live.
+		stats := u
+		if fresh, err := st.Users().ByID(u.ID); err == nil {
+			stats = fresh
+		}
+		w.ColorLine(screen.Cyan, "Your Stats")
+		w.ColorLine(screen.Cyan, "----------")
+		w.Printf("  Handle: %s   Access level: %d\r\n", stats.Handle, stats.AccessLevel)
+		w.Printf("  Points: %d   Member since: %s\r\n\r\n", stats.Points, stats.CreatedAt.Format("2006-01-02"))
 		w.ColorLine(screen.Cyan, "Your SSH Keys")
 		w.ColorLine(screen.Cyan, "-------------")
 		active, err := keys.Active(u.ID)

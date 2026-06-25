@@ -10,9 +10,11 @@ import (
 	"admiralbbs/src/store"
 )
 
-// RunBoards drives the message-board subsystem for a logged-in member.
-func RunBoards(s *session.Session, st *store.Store, u *store.User) error {
+// RunBoards drives the message-board subsystem for a logged-in member. sysopPass
+// is the optional step-up secret guarding SysOp-only actions (new board).
+func RunBoards(s *session.Session, st *store.Store, u *store.User, sysopPass string) error {
 	handles := newHandleCache(st)
+	isSysOp := u.AccessLevel >= CoSysOpLevel
 	for {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
@@ -39,7 +41,11 @@ func RunBoards(s *session.Session, st *store.Store, u *store.User) error {
 			w.Print("\r\n")
 		}
 		w.Color(screen.Green)
-		w.Print("\r\nArea # (or [Q]uit): ")
+		if isSysOp {
+			w.Print("\r\nArea # ([N]ew board, [Q]uit): ")
+		} else {
+			w.Print("\r\nArea # (or [Q]uit): ")
+		}
 		w.Reset()
 		in, err := s.ReadLine()
 		if err != nil {
@@ -49,6 +55,12 @@ func RunBoards(s *session.Session, st *store.Store, u *store.User) error {
 		if in == "" || strings.EqualFold(in, "q") {
 			return nil
 		}
+		if isSysOp && strings.EqualFold(in, "n") {
+			if err := newBoard(s, st, u, sysopPass); err != nil {
+				return err
+			}
+			continue
+		}
 		n, perr := strconv.Atoi(in)
 		if perr != nil || n < 1 || n > len(areas) {
 			continue
@@ -57,6 +69,53 @@ func RunBoards(s *session.Session, st *store.Store, u *store.User) error {
 			return err
 		}
 	}
+}
+
+// newBoard lets a SysOp create a new board category from the board menu. It is
+// password-gated: when a SysOp step-up secret is configured it must be entered
+// and verified before the category is created, so an unattended logged-in SysOp
+// session can't be used to add boards by someone who doesn't know it.
+func newBoard(s *session.Session, st *store.Store, u *store.User, sysopPass string) error {
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	if u.AccessLevel < CoSysOpLevel {
+		return nil // defence in depth — the prompt isn't offered to non-SysOps
+	}
+	if sysopPass != "" {
+		w.Color(screen.Green)
+		w.Print("\r\nSysOp password: ")
+		w.Reset()
+		entered, err := s.ReadPassword()
+		if err != nil {
+			return err
+		}
+		if !sysopPassOK(entered, sysopPass) {
+			s.Activity("board-create-denied", "bad sysop password")
+			w.ColorLine(screen.Red, "Denied.")
+			_, _ = s.ReadKey()
+			return nil
+		}
+	}
+	name := prompt(s, w, "New board name (blank to cancel): ")
+	if name == "" {
+		return nil
+	}
+	desc := prompt(s, w, "Description: ")
+	minLevel := 0
+	if v := prompt(s, w, "Min access level [0]: "); v != "" {
+		if lvl, e := strconv.Atoi(v); e == nil && lvl >= 0 {
+			minLevel = lvl
+		}
+	}
+	if _, err := st.MessageAreas().Create(name, desc, minLevel); err != nil {
+		w.ColorLine(screen.Red, "could not create board: "+err.Error())
+		_, _ = s.ReadKey()
+		return nil
+	}
+	s.Activity("board-create", name)
+	w.ColorLine(screen.Cyan, "Board created.")
+	_, _ = s.ReadKey()
+	return nil
 }
 
 func browseArea(s *session.Session, st *store.Store, u *store.User, area *store.MessageArea, handles *handleCache) error {

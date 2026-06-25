@@ -34,7 +34,7 @@ func TestBoardNewMarkersInMenu(t *testing.T) {
 		c := newFakeConn(input, "ansi", transport.WindowSize{Cols: 80, Rows: 25})
 		c.user, c.tr = "visitor", "ssh"
 		sess := session.New("s-visitor", c, lg, nil)
-		if err := menu.RunBoards(sess, s, visitor); err != nil {
+		if err := menu.RunBoards(sess, s, visitor, ""); err != nil {
 			t.Fatalf("boards: %v", err)
 		}
 		sess.Close()
