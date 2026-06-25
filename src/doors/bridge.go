@@ -4,33 +4,37 @@ import (
 	"bytes"
 	"io"
 	"net"
+	"strings"
 	"time"
 )
 
-// Resident-door version handshake (OPTIONAL, generic — nothing game-specific).
+// Resident-door handshake (OPTIONAL, generic — nothing game-specific).
 //
 // As the very first bytes on an accepted bridge connection, a resident door MAY
-// advertise its version with an OSC-framed string:
+// advertise itself with an OSC-framed, semicolon-separated key=value string:
 //
-//	ESC ] ABBS;version=<semver> BEL
+//	ESC ] ABBS;version=<semver>;caps=<cap,cap,...> BEL
 //
-// The host strips it from the stream and MAY display it (e.g. on the launch
-// line). Doors that don't send it are fully transparent — the host just shows
-// the door name. OSC framing means the sequence is silently swallowed by any
-// terminal if a door is reached directly (not through the BBS), so it never
-// garbles a raw session.
+// The host strips it from the stream, MAY display the version (e.g. on the
+// launch line), and — for each advertised capability — MAY respond. The only
+// capability today is "handle": a door that advertises it gets the caller's BBS
+// handle pushed back as a reciprocal sentinel (see SendHandle), so it can
+// default its own name prompt. Doors that send nothing are fully transparent.
+// OSC framing means the sequence is swallowed by a terminal if a door is reached
+// directly (not through the BBS), so it never garbles a raw session.
 const (
-	sentinelPrefix = "\x1b]ABBS;version="
+	sentinelPrefix = "\x1b]ABBS;"
 	sentinelBEL    = 0x07
-	sentinelMax    = 128 // cap the scan so a garbled/hostile door can't make us read forever
+	sentinelMax    = 256 // cap the scan so a garbled/hostile door can't make us read forever
 )
 
-// ResidentConn is a dialed resident-door connection plus any version it
-// advertised during the handshake. Relay pumps bytes both ways; Close ends it.
+// ResidentConn is a dialed resident-door connection plus what it advertised
+// during the handshake. Relay pumps bytes both ways; Close ends it.
 type ResidentConn struct {
 	conn    net.Conn
-	Version string // advertised door version (no leading "v"), or "" if none
-	pre     []byte // door bytes already read past the handshake — replayed to the caller first
+	Version string          // advertised door version (no leading "v"), or "" if none
+	caps    map[string]bool // advertised capabilities (e.g. "handle")
+	pre     []byte          // door bytes already read past the handshake — replayed to the caller first
 }
 
 // DialResident connects to a resident door and reads its OPTIONAL version
@@ -72,7 +76,7 @@ func (rc *ResidentConn) readHandshake(timeout time.Duration) {
 			case bytes.HasPrefix(buf, prefix):
 				// Full prefix matched — look for the BEL terminator.
 				if i := bytes.IndexByte(buf, sentinelBEL); i >= 0 {
-					rc.Version = sanitizeVersion(buf[len(prefix):i])
+					rc.parsePayload(string(buf[len(prefix):i]))
 					rc.pre = buf[i+1:]
 					return
 				}
@@ -91,6 +95,63 @@ func (rc *ResidentConn) readHandshake(timeout time.Duration) {
 		}
 	}
 	rc.pre = buf // overflowed the scan cap without a complete sentinel — forward verbatim
+}
+
+// parsePayload reads the handshake's "key=value;key=value" body for the fields
+// the host understands (version, caps). Unknown keys are ignored.
+func (rc *ResidentConn) parsePayload(s string) {
+	rc.caps = map[string]bool{}
+	for _, kv := range strings.Split(s, ";") {
+		k, v, ok := strings.Cut(kv, "=")
+		if !ok {
+			continue
+		}
+		switch strings.TrimSpace(k) {
+		case "version":
+			rc.Version = sanitizeVersion([]byte(v))
+		case "caps":
+			for _, c := range strings.Split(v, ",") {
+				if c = strings.TrimSpace(c); c != "" {
+					rc.caps[c] = true
+				}
+			}
+		}
+	}
+}
+
+// SendHandle pushes the caller's BBS handle to the door — but ONLY if the door
+// advertised the "handle" capability — so the door can default its own name
+// prompt to it. It's the reciprocal OSC sentinel the door reads and strips:
+//
+//	ESC ] ABBS;handle=<handle> BEL
+//
+// A no-op for doors that didn't advertise the capability, so it never injects
+// bytes a door isn't expecting.
+func (rc *ResidentConn) SendHandle(handle string) {
+	if rc == nil || !rc.caps["handle"] {
+		return
+	}
+	h := sanitizeHandle(handle)
+	if h == "" {
+		return
+	}
+	_, _ = rc.conn.Write([]byte(sentinelPrefix + "handle=" + h + string(rune(sentinelBEL))))
+}
+
+// sanitizeHandle keeps only characters legal in a runner/BBS handle and caps the
+// length, so the reciprocal sentinel can never carry control codes.
+func sanitizeHandle(s string) string {
+	if len(s) > 24 {
+		s = s[:24]
+	}
+	out := make([]byte, 0, len(s))
+	for _, c := range []byte(s) {
+		if c == '_' || c == '-' || c == '.' ||
+			(c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			out = append(out, c)
+		}
+	}
+	return string(out)
 }
 
 // sanitizeVersion keeps only characters legal in a SemVer-ish string and caps the
