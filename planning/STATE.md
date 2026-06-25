@@ -14,8 +14,9 @@ Both binaries gained a forge-agnostic update check (`-update-url` /
 repo. The generic resident-door framework (`src/doors`, `src/store/doors.go`)
 stays; `tests/cowboy_door_test.go` now exercises only that generic Doors API.
 
-> **What's left lives in [`planning/BACKLOG.md`](BACKLOG.md)** — now FULLY
-> CLEARED (2026-06-24). All P1/P2/P3 items shipped across S014–S021.
+> **What's left lives in [`BACKLOG.md`](../BACKLOG.md)** (repo root) — the
+> single backlog, kept in sync with the GitHub Issues tab. All P1/P2/P3 items
+> shipped across S014–S021.
 
 **S014–S021 (backlog clear-out, 2026-06-24)** — worked the whole BACKLOG top to
 bottom, each item tested and landed on `main` with a verified-green CI run:
@@ -59,7 +60,7 @@ rejection, file-area search/sort/filter/delete, XMODEM upload byte-cap, and
 self-service password change. **CI is GREEN for the first time** (build / vet /
 test / govulncheck on the Linux runner) — it had been red since S009 over a
 non-portable path-traversal test assertion, now fixed. Remaining work is
-catalogued in BACKLOG.md.
+catalogued in the root [`BACKLOG.md`](../BACKLOG.md).
 
 ## Active sprint
 
