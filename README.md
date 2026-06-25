@@ -56,7 +56,7 @@ runnable examples — is published at
 **[ABBS-Door-Specification](https://github.com/CryptoJones/ABBS-Door-Specification)**
 (MIT-licensed; commercial and closed-source doors are welcome).
 
-### Door games
+### Available door games
 
 | Door | Kind | Description |
 |------|------|-------------|
