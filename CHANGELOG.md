@@ -13,6 +13,15 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [2.0.4] - 2026-06-25
+
+### Added
+- **SysOp-configurable session timeouts.** A new **`[T] Session timeouts`** panel
+  screen lets a SysOp set the idle-disconnect timeout and the default daily time
+  budget at runtime; both persist in the `setting` table and apply to new sessions
+  **without a restart**. The `-idle` / `-daily-minutes` CLI flags now just seed the
+  defaults on a fresh DB. Closes #1.
+
 ## [2.0.3] - 2026-06-24
 
 ### Added
@@ -318,7 +327,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.3...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.4...HEAD
+[2.0.4]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.4
 [2.0.3]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.3
 [2.0.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.2
 [2.0.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.1

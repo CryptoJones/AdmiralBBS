@@ -1,6 +1,9 @@
 package store
 
-import "database/sql"
+import (
+	"database/sql"
+	"strconv"
+)
 
 // Settings is the SysOp-editable key/value config (branding + MOTD). Unset keys
 // return the provided default, so the BBS works out of the box and a SysOp only
@@ -42,3 +45,19 @@ func (r *Settings) Tagline() string { return r.Get("tagline", DefaultTagline) }
 
 // MOTD is the configured message of the day ("" = none).
 func (r *Settings) MOTD() string { return r.Get("motd", "") }
+
+// getInt reads a positive-int setting, falling back to def when unset/invalid.
+func (r *Settings) getInt(key string, def int) int {
+	if v := r.Get(key, ""); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
+
+// IdleMinutes is the SysOp-configured idle-disconnect timeout (minutes), or def.
+func (r *Settings) IdleMinutes(def int) int { return r.getInt("idle_minutes", def) }
+
+// DailyMinutes is the SysOp-configured default daily time budget (minutes), or def.
+func (r *Settings) DailyMinutes(def int) int { return r.getInt("daily_minutes", def) }
