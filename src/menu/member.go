@@ -10,7 +10,7 @@ import (
 // Member builds the authenticated member's main menu. Subsystem entries are
 // placeholders until their sprints land; the Profile entry (self-service SSH
 // key management) is live now.
-func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts doors.Opts, node int, doorsData string, roster *session.Roster, sysopPass string) *Menu {
+func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts doors.Opts, node int, doorsData string, roster *session.Roster, sysopPass string, installer *DoorInstaller) *Menu {
 	m := &Menu{ArtPath: artPath}
 	// Refresh re-reads branding + items on EVERY render, so a SysOp editing the
 	// BBS name/tagline/MOTD sees it take effect immediately — not only after the
@@ -28,7 +28,7 @@ func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts 
 			items = append(items, Item{Key: 'O', Label: "Message of the Day (re-read)", Action: motdAction(st)})
 		}
 		if u.AccessLevel >= CoSysOpLevel {
-			items = append(items, Item{Key: 'X', Label: "SysOp Control Panel", Action: sysopAction(st, u, auditPath, sysopPass)})
+			items = append(items, Item{Key: 'X', Label: "SysOp Control Panel", Action: sysopAction(st, u, auditPath, sysopPass, installer)})
 		}
 		items = append(items, Item{Key: 'G', Label: "Goodbye / Logoff", Action: logoffAction(st)})
 
@@ -61,9 +61,9 @@ func motdAction(st *store.Store) Action {
 	}
 }
 
-func sysopAction(st *store.Store, u *store.User, auditPath, sysopPass string) Action {
+func sysopAction(st *store.Store, u *store.User, auditPath, sysopPass string, installer *DoorInstaller) Action {
 	return func(s *session.Session) (Outcome, error) {
-		if err := RunSysOp(s, st, u, auditPath, sysopPass); err != nil {
+		if err := RunSysOp(s, st, u, auditPath, sysopPass, installer); err != nil {
 			return Logoff, err
 		}
 		return Continue, nil
