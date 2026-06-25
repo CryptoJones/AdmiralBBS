@@ -40,7 +40,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) == 0 {
-		log.Fatal("usage: sysopctl [-db ...] [-salt ...] list | approve <handle> [level] | promote <handle> [level] | bootstrap <handle> <pubkey-file|-> [level]")
+		log.Fatal("usage: sysopctl [-db ...] [-salt ...] list | approve <handle> [level=1; 100=SysOp] | promote <handle> [level=1; 100=SysOp] | bootstrap <handle> <pubkey-file|-> [level]")
 	}
 
 	secret := os.Getenv("ADMIRALBBS_KEY")
@@ -82,7 +82,9 @@ func main() {
 			log.Fatalf("usage: sysopctl %s <handle> [level]", args[0])
 		}
 		handle := args[1]
-		level := 100
+		// Default to a regular member; SysOp (100) must be granted EXPLICITLY so a
+		// bare `approve <handle>` can never silently hand a stranger full admin.
+		level := 1
 		if len(args) >= 3 {
 			if v, e := strconv.Atoi(args[2]); e == nil {
 				level = v
