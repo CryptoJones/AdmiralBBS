@@ -42,7 +42,7 @@ func RunFiles(s *session.Session, st *store.Store, u *store.User) error {
 			return err
 		}
 		in = strings.TrimSpace(in)
-		if in == "" || strings.EqualFold(in, "q") {
+		if in == "" || strings.EqualFold(in, "q") || strings.EqualFold(in, "x") {
 			return nil
 		}
 		if n, perr := strconv.Atoi(in); perr == nil && n >= 1 && n <= len(areas) {
@@ -106,7 +106,7 @@ func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *st
 		}
 		in = strings.TrimSpace(in)
 		switch {
-		case in == "" || strings.EqualFold(in, "q"):
+		case in == "" || strings.EqualFold(in, "q") || strings.EqualFold(in, "x"):
 			return nil
 		case in == ">":
 			page++

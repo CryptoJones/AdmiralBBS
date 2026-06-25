@@ -67,7 +67,7 @@ func RunMail(s *session.Session, st *store.Store, u *store.User) error {
 		}
 		in = strings.TrimSpace(in)
 		switch {
-		case in == "" || strings.EqualFold(in, "q"):
+		case in == "" || strings.EqualFold(in, "q") || strings.EqualFold(in, "x"):
 			return nil
 		case in == ">":
 			page++
@@ -242,7 +242,7 @@ func lookupUser(s *session.Session, st *store.Store, u *store.User) (*store.User
 		}
 		in = strings.TrimSpace(in)
 		switch {
-		case in == "" || strings.EqualFold(in, "q"):
+		case in == "" || strings.EqualFold(in, "q") || strings.EqualFold(in, "x"):
 			return nil, nil
 		case in == ">":
 			page++

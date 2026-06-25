@@ -79,6 +79,10 @@ All three landed on `main`. The moderation gap CJ surfaced is closed.
 - [x] **Mail: "look" feature at the TO prompt** — DONE (v2.0.6, `main`).
   [#4](https://github.com/CryptoJones/AdmiralBBS/issues/4). `?` at the To: prompt
   opens a paged member directory to pick a recipient by number.
+- [x] **Move the SysOp Control Panel off `[X]`** — DONE (v2.0.7, `main`).
+  [#5](https://github.com/CryptoJones/AdmiralBBS/issues/5). SysOp panel is now
+  `[S]`; `X`/`Q` are reserved quit keys everywhere — the main menu logs off on
+  X/Q (engine `OnQuit`) and every sub-menu backs out on X as well as Q.
 
 ## Decided NON-goals (do not build)
 

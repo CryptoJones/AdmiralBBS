@@ -7,11 +7,11 @@ here so neither side drifts.
 
 ## Open
 
-- [ ] **Move SysOp Control Panel off [X] — reserve X and Q for quitting menus** ([#5](https://github.com/CryptoJones/AdmiralBBS/issues/5))
+<!-- Add open items here, each with a matching GitHub issue. -->
 
 ## Done
 
-<!-- Move shipped items here (or delete) as their issues close. -->
+- [x] **Move SysOp Control Panel off [X] — reserve X and Q for quitting menus** ([#5](https://github.com/CryptoJones/AdmiralBBS/issues/5)) — shipped in v2.0.7.
 
 ---
 

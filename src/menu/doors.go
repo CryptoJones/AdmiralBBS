@@ -46,7 +46,7 @@ func RunDoors(s *session.Session, st *store.Store, u *store.User, base doors.Opt
 			return err
 		}
 		in = strings.TrimSpace(in)
-		if in == "" || strings.EqualFold(in, "q") {
+		if in == "" || strings.EqualFold(in, "q") || strings.EqualFold(in, "x") {
 			return nil
 		}
 		n, perr := strconv.Atoi(in)

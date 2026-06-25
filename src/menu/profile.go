@@ -92,7 +92,7 @@ func RunProfile(s *session.Session, st *store.Store, u *store.User) error {
 				w.ColorLine(screen.Cyan, "  [ok] key revoked")
 				s.Activity("key-revoke", active[n-1].Fingerprint)
 			}
-		case 'q':
+		case 'q', 'x':
 			return nil
 		}
 	}
@@ -167,7 +167,7 @@ func manageBlocks(s *session.Session, st *store.Store, u *store.User) error {
 				s.Activity("unblock-user", handles[n-1])
 				w.ColorLine(screen.Cyan, "  [ok] unblocked")
 			}
-		case 'q':
+		case 'q', 'x':
 			return nil
 		}
 	}

@@ -39,6 +39,10 @@ type Menu struct {
 	// Refresh, if set, runs before each render to recompute dynamic fields
 	// (title/banner/items) — so live config changes show without a relog.
 	Refresh func()
+	// OnQuit, if set, runs when the caller presses a reserved quit key ([Q] or
+	// [X]) that no item claims — so X and Q always back out of a menu. On the
+	// top-level menu this is the logoff action.
+	OnQuit Action
 }
 
 // BBSBanner builds a simple, brand-neutral ASCII banner from the configured BBS
@@ -130,6 +134,16 @@ func (m *Menu) Run(s *session.Session) error {
 		}
 		item := m.find(line[0])
 		if item == nil {
+			// X and Q are reserved quit keys: if nothing claims them, back out.
+			if k := toLower(line[0]); (k == 'q' || k == 'x') && m.OnQuit != nil {
+				out, err := m.OnQuit(s)
+				if err != nil {
+					return err
+				}
+				if out == Logoff {
+					return nil
+				}
+			}
 			continue // unknown command: redraw
 		}
 		out, err := item.Action(s)

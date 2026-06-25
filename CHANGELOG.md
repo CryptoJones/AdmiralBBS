@@ -13,6 +13,15 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [2.0.7] - 2026-06-25
+
+### Changed
+- **`X` and `Q` are now reserved as quit/back keys in every menu.** The SysOp
+  Control Panel moved off **`[X]` → `[S]`** on the main menu (it was the only
+  command bound to a reserved key), and the main menu now logs off on `X`/`Q`
+  (matching the universal BBS convention) in addition to `[G] Goodbye`. Every
+  sub-menu that backed out on `Q` now also accepts `X`. Closes #5.
+
 ## [2.0.6] - 2026-06-25
 
 ### Added
