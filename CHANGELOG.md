@@ -13,6 +13,15 @@ Each merge to `main` bumps the version (see `version` in
 
 _Nothing yet._
 
+## [2.0.3] - 2026-06-24
+
+### Added
+- **Doors can default their name prompt to the caller's BBS handle.** The
+  resident-door handshake now carries an optional `caps=<...>` list; a door that
+  advertises `caps=handle` gets the caller's handle pushed back as a reciprocal
+  `ESC ] ABBS;handle=<h> BEL` sentinel — sent **only** to doors that ask, so it
+  never injects bytes into a door that doesn't (ABBS Door Spec §2.2a).
+
 ## [2.0.2] - 2026-06-24
 
 ### Added
@@ -309,7 +318,8 @@ SSH :1337 members).
 - `rekey` key rotation; container image; systemd deployment on pluto.
 - `-version` flag.
 
-[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/CryptoJones/AdmiralBBS/compare/v2.0.3...HEAD
+[2.0.3]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.3
 [2.0.2]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.2
 [2.0.1]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.1
 [2.0.0]: https://github.com/CryptoJones/AdmiralBBS/releases/tag/v2.0.0
