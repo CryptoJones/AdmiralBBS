@@ -132,6 +132,12 @@ func main() {
 		log.Fatalf("open database: %v", err)
 	}
 	defer db.Close()
+
+	// Supervises resident doors installed from a release URL (started below,
+	// after doorsData is known; torn down on shutdown).
+	sup := doors.NewSupervisor()
+	defer sup.StopAll()
+
 	if err := db.EnsureSeedAreas(); err != nil {
 		log.Fatalf("seed message areas: %v", err)
 	}
@@ -173,6 +179,7 @@ func main() {
 	go func() {
 		<-sigc
 		log.Println("shutting down — flushing audit + closing database")
+		sup.StopAll() // stop supervised installed doors
 		logger.Close()
 		db.Close()
 		vault.Close()
@@ -186,6 +193,10 @@ func main() {
 	if doorsData == "" {
 		doorsData = filepath.Join(filepath.Dir(*dbPath), "doors-data")
 	}
+
+	// Relaunch + re-register any doors a SysOp installed from a release URL.
+	doorInstaller := menu.NewDoorInstaller(db, sup, doorsData)
+	doorInstaller.RelaunchAll()
 
 	var counter atomic.Uint64
 	limits := transport.Limits{MaxSessions: *maxSessions, PerIP: *perIP, HandshakeTimeout: 10 * time.Second}
