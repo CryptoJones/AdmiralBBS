@@ -9,6 +9,15 @@ compatible features bump the MINOR (`1.x.0`); breaking changes bump the MAJOR.
 Each merge to `main` bumps the version (see `version` in
 `src/cmd/admiralbbs/main.go`).
 
+## [2.2.0] - 2026-06-26
+
+### Added
+- **Colorblind-friendly color scheme.** A per-member toggle (Profile → `[C]`)
+  remaps the success green to blue so it doesn't collide with danger red, for
+  red-green colorblind callers. Applied BBS-wide via the screen Writer and
+  persisted (new `colorblind` user column). Matches Chrome Circuit Cowboys #38.
+  (#9)
+
 ## [2.1.0] - 2026-06-26
 
 ### Added

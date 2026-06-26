@@ -23,17 +23,33 @@ const (
 
 // Writer wraps an output stream with capability-aware rendering.
 type Writer struct {
-	w    io.Writer
-	ansi bool
-	cols int
+	w          io.Writer
+	ansi       bool
+	cols       int
+	colorblind bool
 }
 
 // New builds a Writer. ansi=false produces plain B&W output from every call.
+// If the underlying writer exposes Colorblind() (the session does), the palette
+// is remapped to a colorblind-friendly scheme (accessibility, #9).
 func New(w io.Writer, ansi bool, cols int) *Writer {
 	if cols <= 0 {
 		cols = 80
 	}
-	return &Writer{w: w, ansi: ansi, cols: cols}
+	cb := false
+	if c, ok := w.(interface{ Colorblind() bool }); ok {
+		cb = c.Colorblind()
+	}
+	return &Writer{w: w, ansi: ansi, cols: cols, colorblind: cb}
+}
+
+// cbColor remaps a foreground SGR code to a colorblind-friendly one: success
+// green → blue, so it doesn't collide with danger red (red-green colorblind).
+func cbColor(fg int) int {
+	if fg == Green {
+		return Blue
+	}
+	return fg
 }
 
 // Cols reports the assumed line width.
@@ -53,6 +69,9 @@ func (s *Writer) Line(text string) { io.WriteString(s.w, text+"\r\n") }
 // Color sets the foreground colour — a no-op on B&W terminals.
 func (s *Writer) Color(fg int) {
 	if s.ansi {
+		if s.colorblind {
+			fg = cbColor(fg)
+		}
 		fmt.Fprintf(s.w, "\x1b[%dm", fg)
 	}
 }

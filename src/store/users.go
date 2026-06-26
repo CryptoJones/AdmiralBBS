@@ -28,6 +28,7 @@ type User struct {
 	Status       string
 	DailyMinutes int
 	Points       int
+	Colorblind   bool
 	CreatedAt    time.Time
 	LastLoginAt  *time.Time
 }
@@ -63,17 +64,19 @@ func (r *Users) Create(handle, passwordHash, realName, email string) (*User, err
 	return r.ByID(id)
 }
 
-const userCols = `id, handle, password_hash, real_name, email, access_level, status, daily_minutes, points, created_at, last_login_at`
+const userCols = `id, handle, password_hash, real_name, email, access_level, status, daily_minutes, points, colorblind, created_at, last_login_at`
 
 func (r *Users) scan(row interface{ Scan(...any) error }) (*User, error) {
 	var u User
 	var created string
 	var lastLogin sql.NullString
 	var encName, encEmail string
+	var colorblind int
 	if err := row.Scan(&u.ID, &u.Handle, &u.PasswordHash, &encName, &encEmail,
-		&u.AccessLevel, &u.Status, &u.DailyMinutes, &u.Points, &created, &lastLogin); err != nil {
+		&u.AccessLevel, &u.Status, &u.DailyMinutes, &u.Points, &colorblind, &created, &lastLogin); err != nil {
 		return nil, err
 	}
+	u.Colorblind = colorblind != 0
 	var err error
 	if u.RealName, err = r.st.open(encName); err != nil {
 		return nil, err
@@ -130,6 +133,16 @@ func (r *Users) Approve(id int64, accessLevel int) error {
 // SetDailyMinutes sets a user's daily time budget (SysOp).
 func (r *Users) SetDailyMinutes(id int64, minutes int) error {
 	_, err := r.st.db.Exec(`UPDATE user SET daily_minutes = ? WHERE id = ?`, minutes, id)
+	return err
+}
+
+// SetColorblind toggles a user's colorblind-friendly color scheme preference.
+func (r *Users) SetColorblind(id int64, on bool) error {
+	v := 0
+	if on {
+		v = 1
+	}
+	_, err := r.st.db.Exec(`UPDATE user SET colorblind = ? WHERE id = ?`, v, id)
 	return err
 }
 

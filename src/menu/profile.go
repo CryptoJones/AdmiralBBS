@@ -39,8 +39,13 @@ func RunProfile(s *session.Session, st *store.Store, u *store.User) error {
 		for i, k := range active {
 			w.Printf("  %d) %s  %s\r\n", i+1, k.Fingerprint, k.Comment)
 		}
+		cbState := "off"
+		if stats.Colorblind {
+			cbState = "on"
+		}
+		w.Printf("  Colorblind-friendly colors: %s\r\n", cbState)
 		w.Color(screen.Green)
-		w.Print("\r\n[A]dd key  [R]evoke key  [P]assword  [B]locked users  [Q]uit: ")
+		w.Print("\r\n[A]dd key  [R]evoke key  [P]assword  [C]olorblind  [B]locked users  [Q]uit: ")
 		w.Reset()
 
 		key, err := s.ReadKey()
@@ -48,6 +53,14 @@ func RunProfile(s *session.Session, st *store.Store, u *store.User) error {
 			return err
 		}
 		switch toLower(key) {
+		case 'c':
+			on := !stats.Colorblind
+			if err := st.Users().SetColorblind(u.ID, on); err != nil {
+				return err
+			}
+			u.Colorblind = on
+			s.SetColorblind(on)
+			s.Activity("colorblind-toggle", cbState)
 		case 'p':
 			if err := changePassword(s, st, u, w); err != nil {
 				return err
