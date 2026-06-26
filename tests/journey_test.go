@@ -103,7 +103,7 @@ func TestFullMemberJourney(t *testing.T) {
 
 	// 6) Upload a text file via paste.
 	run("alice", false, "1\nu\nnotes.txt\nmy notes\nphello file body\n.\nq\nq\n", func(sess *session.Session) {
-		if err := menu.RunFiles(sess, s, alice); err != nil {
+		if err := menu.RunFiles(sess, s, alice, ""); err != nil {
 			t.Fatalf("files: %v", err)
 		}
 	})

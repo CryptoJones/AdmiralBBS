@@ -14,8 +14,9 @@ import (
 // RunFiles drives the file library. Uploads are text/ANSI via paste (binary
 // X/Y/Zmodem transfer is a planned follow-on); downloads stream the decrypted
 // content between markers.
-func RunFiles(s *session.Session, st *store.Store, u *store.User) error {
+func RunFiles(s *session.Session, st *store.Store, u *store.User, sysopPass string) error {
 	handles := newHandleCache(st)
+	isSysOp := u.AccessLevel >= CoSysOpLevel
 	for {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
@@ -35,7 +36,11 @@ func RunFiles(s *session.Session, st *store.Store, u *store.User) error {
 			w.Print("\r\n")
 		}
 		w.Color(screen.Green)
-		w.Print("\r\nArea # (or [Q]uit): ")
+		if isSysOp {
+			w.Print("\r\nArea # ([N]ew area, [Q]uit): ")
+		} else {
+			w.Print("\r\nArea # (or [Q]uit): ")
+		}
 		w.Reset()
 		in, err := s.ReadLine()
 		if err != nil {
@@ -45,12 +50,63 @@ func RunFiles(s *session.Session, st *store.Store, u *store.User) error {
 		if in == "" || strings.EqualFold(in, "q") || strings.EqualFold(in, "x") {
 			return nil
 		}
+		if isSysOp && strings.EqualFold(in, "n") {
+			if err := newFileArea(s, st, u, sysopPass); err != nil {
+				return err
+			}
+			continue
+		}
 		if n, perr := strconv.Atoi(in); perr == nil && n >= 1 && n <= len(areas) {
 			if err := browseFileArea(s, st, u, areas[n-1], handles); err != nil {
 				return err
 			}
 		}
 	}
+}
+
+// newFileArea lets a SysOp create a new File Area from the file menu, mirroring
+// the message-board [N]ew board. Password-gated by the SysOp step-up secret when
+// one is configured, so an unattended SysOp session can't be used to add areas.
+func newFileArea(s *session.Session, st *store.Store, u *store.User, sysopPass string) error {
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	if u.AccessLevel < CoSysOpLevel {
+		return nil // defence in depth — the prompt isn't offered to non-SysOps
+	}
+	if sysopPass != "" {
+		w.Color(screen.Green)
+		w.Print("\r\nSysOp password: ")
+		w.Reset()
+		entered, err := s.ReadPassword()
+		if err != nil {
+			return err
+		}
+		if !sysopPassOK(entered, sysopPass) {
+			s.Activity("filearea-create-denied", "bad sysop password")
+			w.ColorLine(screen.Red, "Denied.")
+			_, _ = s.ReadKey()
+			return nil
+		}
+	}
+	name := prompt(s, w, "New file area name (blank to cancel): ")
+	if name == "" {
+		return nil
+	}
+	minLevel := 0
+	if v := prompt(s, w, "Min access level [0]: "); v != "" {
+		if lvl, e := strconv.Atoi(v); e == nil && lvl >= 0 {
+			minLevel = lvl
+		}
+	}
+	if _, err := st.FileAreas().Create(name, minLevel); err != nil {
+		w.ColorLine(screen.Red, "could not create area: "+err.Error())
+		_, _ = s.ReadKey()
+		return nil
+	}
+	s.Activity("filearea-create", name)
+	w.ColorLine(screen.Cyan, "File area created.")
+	_, _ = s.ReadKey()
+	return nil
 }
 
 func browseFileArea(s *session.Session, st *store.Store, u *store.User, area *store.FileArea, handles *handleCache) error {

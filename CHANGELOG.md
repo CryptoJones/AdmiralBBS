@@ -9,9 +9,12 @@ compatible features bump the MINOR (`1.x.0`); breaking changes bump the MAJOR.
 Each merge to `main` bumps the version (see `version` in
 `src/cmd/admiralbbs/main.go`).
 
-## [Unreleased]
+## [2.1.0] - 2026-06-26
 
-_Nothing yet._
+### Added
+- **File menu: SysOp creates a File Area.** A SysOp-gated `[N]ew area` option on
+  the File Library, mirroring the message-board `[N]ew board` (step-up password
+  when configured). (#6)
 
 ## [2.0.7] - 2026-06-25
 
