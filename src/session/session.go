@@ -31,6 +31,22 @@ type Session struct {
 	idle        time.Duration
 	idleTimer   *time.Timer
 	budgetTimer *time.Timer
+	colorblind  bool
+}
+
+// SetColorblind sets the caller's colorblind-friendly color preference (from
+// their saved profile). The screen Writer reads it to remap the palette.
+func (s *Session) SetColorblind(on bool) {
+	s.mu.Lock()
+	s.colorblind = on
+	s.mu.Unlock()
+}
+
+// Colorblind reports the caller's colorblind-friendly color preference.
+func (s *Session) Colorblind() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.colorblind
 }
 
 // New wraps a connection in a session, detects its terminal, logs the connect

@@ -250,6 +250,7 @@ func main() {
 		if !ok {
 			return
 		}
+		s.SetColorblind(u.Colorblind) // apply the caller's accessibility palette
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
 		// One live session per user, NEWEST WINS: a new login displaces any
