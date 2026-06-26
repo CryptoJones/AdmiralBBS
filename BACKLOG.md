@@ -9,9 +9,9 @@ here so neither side drifts.
 
 <!-- Add open items here, each with a matching GitHub issue. -->
 
-- [ ] **File menu: SysOp creates a new File Area (topic)** ([#6](https://github.com/CryptoJones/AdmiralBBS/issues/6)) — SysOp-gated `[N]ew area` on the File menu, mirroring the message-board `[N]ew board` from #2.
-- [ ] **Mail: user-search in `To:` (on `*`) + a new `CC:` field** ([#7](https://github.com/CryptoJones/AdmiralBBS/issues/7)) — typing `*` opens the member-directory search in `To:`; add a `CC:` field with the same lookup.
-- [ ] **Modern file upload** ([#8](https://github.com/CryptoJones/AdmiralBBS/issues/8)) — X/Z-modem doesn't work over SSH; add base64 paste for binaries and/or an HTTP(S) upload endpoint.
+- [x] **File menu: SysOp creates a new File Area (topic)** ([#6](https://github.com/CryptoJones/AdmiralBBS/issues/6)) — SysOp-gated `[N]ew area` on the File menu, mirroring the message-board `[N]ew board` from #2. — _shipped v2.1.0: SysOp [N]ew File Area_
+- [x] **Mail: user-search in `To:` (on `*`) + a new `CC:` field** ([#7](https://github.com/CryptoJones/AdmiralBBS/issues/7)) — typing `*` opens the member-directory search in `To:`; add a `CC:` field with the same lookup. — _shipped v2.1.0: To/CC * search + CC field_
+- [x] **Modern file upload** ([#8](https://github.com/CryptoJones/AdmiralBBS/issues/8)) — X/Z-modem doesn't work over SSH; add base64 paste for binaries and/or an HTTP(S) upload endpoint. — _shipped v2.1.0: [B]ase64 binary upload over SSH_
 
 ## Done
 
