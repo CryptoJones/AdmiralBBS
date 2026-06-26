@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,9 +12,9 @@ import (
 	"admiralbbs/src/xfer"
 )
 
-// RunFiles drives the file library. Uploads are text/ANSI via paste (binary
-// X/Y/Zmodem transfer is a planned follow-on); downloads stream the decrypted
-// content between markers.
+// RunFiles drives the file library. Uploads are text/ANSI via paste, binary via
+// base64 paste (works on any modern SSH client), or XMODEM; downloads stream the
+// decrypted content between markers.
 func RunFiles(s *session.Session, st *store.Store, u *store.User, sysopPass string) error {
 	handles := newHandleCache(st)
 	isSysOp := u.AccessLevel >= CoSysOpLevel
@@ -306,14 +307,15 @@ func uploadFile(s *session.Session, st *store.Store, u *store.User, areaID int64
 		return err
 	}
 	w.Color(screen.Green)
-	w.Print("[X]MODEM upload or [P]aste text? ")
+	w.Print("[B]ase64 (binary paste), [P]aste text, or [X]MODEM? ")
 	w.Reset()
 	mode, err := s.ReadKey()
 	if err != nil {
 		return err
 	}
 	var content []byte
-	if toLower(mode) == 'x' {
+	switch toLower(mode) {
+	case 'x':
 		w.Line("\r\nStart your XMODEM send now...")
 		data, xerr := xfer.Receive(s.Raw(), store.MaxFileBytes)
 		if xerr != nil {
@@ -321,7 +323,28 @@ func uploadFile(s *session.Session, st *store.Store, u *store.User, areaID int64
 			return nil
 		}
 		content = data
-	} else {
+	case 'b':
+		// Base64 binary paste — works on any modern SSH client (no sz/rz). Paste
+		// `base64 <file>` output; we strip whitespace and decode.
+		w.Line("\r\nPaste the file's base64 (e.g. `base64 file`). End with a single '.' on its own line.")
+		var sb strings.Builder
+		for {
+			line, err := s.ReadLine()
+			if err != nil {
+				return err
+			}
+			if line == "." {
+				break
+			}
+			sb.WriteString(strings.TrimSpace(line))
+		}
+		data, derr := base64.StdEncoding.DecodeString(sb.String())
+		if derr != nil {
+			w.ColorLine(screen.Red, "that isn't valid base64 — try again: "+derr.Error())
+			return nil
+		}
+		content = data
+	default:
 		w.Line("\r\nPaste the file contents (text/ANSI). End with a single '.' on its own line.")
 		var lines []string
 		for {
