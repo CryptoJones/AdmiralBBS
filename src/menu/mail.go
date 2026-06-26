@@ -163,55 +163,112 @@ func composeMail(s *session.Session, st *store.Store, u *store.User, handles *ha
 	if recipient == nil {
 		return nil // cancelled
 	}
-	return sendMail(s, st, u, recipient.ID, "")
+	cc, err := pickCC(s, st, u, recipient.ID)
+	if err != nil {
+		return err
+	}
+	return sendToMany(s, st, u, append([]int64{recipient.ID}, cc...), "")
 }
 
-// pickRecipient resolves the "To:" recipient. The caller can type a handle, or
-// "?" to LOOK UP the member directory when they don't know the exact handle —
-// they pick from a paged list instead. Returns (nil, nil) on cancel.
-func pickRecipient(s *session.Session, st *store.Store, u *store.User) (*store.User, error) {
-	cap := s.Cap()
-	w := screen.New(s, cap.ANSI, cap.Cols)
-	w.Print("\r\n")
-	w.Color(screen.Green)
-	w.Print("To (handle, or ? to look up): ")
-	w.Reset()
-	to, err := s.ReadLine()
-	if err != nil {
-		return nil, err
-	}
-	to = strings.TrimSpace(to)
-	if to == "" {
+// resolveRecipient turns a To:/CC: entry into a member: an exact handle, "?" to
+// browse the full directory, or a "*"-wildcard to search it (e.g. "ali*"). Any
+// "*" in the entry triggers the search on the rest of the text. Returns
+// (nil, nil) when the entry is blank, cancelled, or unmatched.
+func resolveRecipient(s *session.Session, st *store.Store, u *store.User, entry string) (*store.User, error) {
+	entry = strings.TrimSpace(entry)
+	switch {
+	case entry == "":
 		return nil, nil
+	case entry == "?":
+		return lookupUser(s, st, u, "")
+	case strings.Contains(entry, "*"):
+		return lookupUser(s, st, u, strings.ReplaceAll(entry, "*", ""))
 	}
-	if to == "?" {
-		return lookupUser(s, st, u)
-	}
-	recipient, err := st.Users().ByHandle(to)
+	recipient, err := st.Users().ByHandle(entry)
 	if err != nil {
-		w.ColorLine(screen.Red, "no such user — type ? to look up the directory")
+		cap := s.Cap()
+		w := screen.New(s, cap.ANSI, cap.Cols)
+		w.ColorLine(screen.Red, "no such user — type ? to browse or use * to search")
 		return nil, nil
 	}
 	return recipient, nil
 }
 
+// pickRecipient resolves the "To:" recipient. Type a handle, "?" to browse, or a
+// "*"-wildcard to search. Returns (nil, nil) on cancel.
+func pickRecipient(s *session.Session, st *store.Store, u *store.User) (*store.User, error) {
+	cap := s.Cap()
+	w := screen.New(s, cap.ANSI, cap.Cols)
+	w.Print("\r\n")
+	w.Color(screen.Green)
+	w.Print("To (handle, ? to browse, * to search): ")
+	w.Reset()
+	to, err := s.ReadLine()
+	if err != nil {
+		return nil, err
+	}
+	return resolveRecipient(s, st, u, to)
+}
+
+// pickCC gathers any CC recipients (same handle/?/* resolution as To:), looping
+// until a blank entry. Skips duplicates and the To: recipient.
+func pickCC(s *session.Session, st *store.Store, u *store.User, toID int64) ([]int64, error) {
+	cap := s.Cap()
+	seen := map[int64]bool{u.ID: true, toID: true}
+	var out []int64
+	for {
+		w := screen.New(s, cap.ANSI, cap.Cols)
+		w.Color(screen.Green)
+		w.Print("CC (handle, ? to browse, * to search, blank to finish): ")
+		w.Reset()
+		entry, err := s.ReadLine()
+		if err != nil {
+			return out, err
+		}
+		if strings.TrimSpace(entry) == "" {
+			return out, nil
+		}
+		r, err := resolveRecipient(s, st, u, entry)
+		if err != nil {
+			return out, err
+		}
+		if r == nil || seen[r.ID] {
+			continue
+		}
+		seen[r.ID] = true
+		out = append(out, r.ID)
+		w.ColorLine(screen.Cyan, "CC: "+r.Handle+" added.")
+	}
+}
+
 // lookupUser shows a paged directory of approved members (excluding the caller)
-// so someone who doesn't know a handle can pick a recipient by number.
-func lookupUser(s *session.Session, st *store.Store, u *store.User) (*store.User, error) {
+// so someone who doesn't know a handle can pick a recipient by number. When
+// filter is non-empty only handles containing it (case-insensitive) are shown —
+// that's the `*` search from the To:/CC: prompts.
+func lookupUser(s *session.Session, st *store.Store, u *store.User, filter string) (*store.User, error) {
 	all, err := st.Users().ListByStatus(store.StatusApproved)
 	if err != nil {
 		return nil, err
 	}
+	filter = strings.ToLower(strings.TrimSpace(filter))
 	dir := all[:0]
 	for _, m := range all {
-		if m.ID != u.ID {
-			dir = append(dir, m)
+		if m.ID == u.ID {
+			continue
 		}
+		if filter != "" && !strings.Contains(strings.ToLower(m.Handle), filter) {
+			continue
+		}
+		dir = append(dir, m)
 	}
 	if len(dir) == 0 {
 		cap := s.Cap()
 		w := screen.New(s, cap.ANSI, cap.Cols)
-		w.ColorLine(screen.Red, "no other members to message yet")
+		if filter != "" {
+			w.ColorLine(screen.Red, "no members match \""+filter+"\"")
+		} else {
+			w.ColorLine(screen.Red, "no other members to message yet")
+		}
 		_, _ = s.ReadKey()
 		return nil, nil
 	}
@@ -257,8 +314,17 @@ func lookupUser(s *session.Session, st *store.Store, u *store.User) (*store.User
 }
 
 func sendMail(s *session.Session, st *store.Store, u *store.User, toID int64, presetSubject string) error {
+	return sendToMany(s, st, u, []int64{toID}, presetSubject)
+}
+
+// sendToMany composes one subject+body and delivers it to every recipient (the
+// To: plus any CC:). The message is written once, not per recipient.
+func sendToMany(s *session.Session, st *store.Store, u *store.User, toIDs []int64, presetSubject string) error {
 	cap := s.Cap()
 	w := screen.New(s, cap.ANSI, cap.Cols)
+	if len(toIDs) == 0 {
+		return nil
+	}
 	subject := presetSubject
 	if subject == "" {
 		w.Color(screen.Green)
@@ -285,11 +351,20 @@ func sendMail(s *session.Session, st *store.Store, u *store.User, toID int64, pr
 		}
 		lines = append(lines, line)
 	}
-	if _, err := st.Mail().Send(u.ID, toID, subject, strings.Join(lines, "\n")); err != nil {
-		w.ColorLine(screen.Red, "could not send: "+err.Error())
-		return nil
+	body := strings.Join(lines, "\n")
+	sent := 0
+	for _, toID := range toIDs {
+		if _, err := st.Mail().Send(u.ID, toID, subject, body); err != nil {
+			w.ColorLine(screen.Red, "could not send to one recipient: "+err.Error())
+			continue
+		}
+		sent++
 	}
 	s.Activity("send-mail", "")
-	w.ColorLine(screen.Cyan, "Mail sent.")
+	if sent > 1 {
+		w.ColorLine(screen.Cyan, "Mail sent to "+strconv.Itoa(sent)+" recipients.")
+	} else {
+		w.ColorLine(screen.Cyan, "Mail sent.")
+	}
 	return nil
 }

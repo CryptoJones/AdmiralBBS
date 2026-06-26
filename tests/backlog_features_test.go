@@ -138,7 +138,7 @@ func TestMailToPromptLookup(t *testing.T) {
 	_ = s.Users().SetStatus(bob.ID, store.StatusApproved, 50)
 
 	// c -> compose; ? -> look up; 1 -> pick bob; subject; body; '.'; q -> exit.
-	driveSession(t, lg, "alice", "c\n?\n1\nHi Bob\nhello there\n.\nq\n", func(sess *session.Session) {
+	driveSession(t, lg, "alice", "c\n?\n1\n\nHi Bob\nhello there\n.\nq\n", func(sess *session.Session) {
 		if err := menu.RunMail(sess, s, alice); err != nil {
 			t.Fatalf("mail: %v", err)
 		}

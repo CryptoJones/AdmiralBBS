@@ -15,6 +15,10 @@ Each merge to `main` bumps the version (see `version` in
 - **File menu: SysOp creates a File Area.** A SysOp-gated `[N]ew area` option on
   the File Library, mirroring the message-board `[N]ew board` (step-up password
   when configured). (#6)
+- **Mail: `To:`/`CC:` member search + CC field.** The `To:` prompt now accepts a
+  `*`-wildcard to search the directory by partial handle (alongside `?` to
+  browse), and a new `CC:` field (same resolution) copies the message to extra
+  recipients. (#7)
 
 ## [2.0.7] - 2026-06-25
 
