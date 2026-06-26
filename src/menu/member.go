@@ -19,7 +19,7 @@ func Member(st *store.Store, u *store.User, artPath, auditPath string, doorOpts 
 		items := []Item{
 			{Key: 'M', Label: "Message Boards", Action: boardsAction(st, u, sysopPass)},
 			{Key: 'E', Label: "Private Mail", Action: mailAction(st, u)},
-			{Key: 'F', Label: "File Library", Action: filesAction(st, u)},
+			{Key: 'F', Label: "File Library", Action: filesAction(st, u, sysopPass)},
 			{Key: 'D', Label: "Door Games", Action: doorsAction(st, u, doorOpts, node, doorsData)},
 			{Key: 'W', Label: "Who's Online", Action: whosOnlineAction(roster)},
 			{Key: 'K', Label: "My SSH Keys / Profile", Action: profileAction(st, u)},
@@ -109,9 +109,9 @@ func mailAction(st *store.Store, u *store.User) Action {
 	}
 }
 
-func filesAction(st *store.Store, u *store.User) Action {
+func filesAction(st *store.Store, u *store.User, sysopPass string) Action {
 	return func(s *session.Session) (Outcome, error) {
-		if err := RunFiles(s, st, u); err != nil {
+		if err := RunFiles(s, st, u, sysopPass); err != nil {
 			return Logoff, err
 		}
 		return Continue, nil
