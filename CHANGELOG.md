@@ -19,6 +19,9 @@ Each merge to `main` bumps the version (see `version` in
   `*`-wildcard to search the directory by partial handle (alongside `?` to
   browse), and a new `CC:` field (same resolution) copies the message to extra
   recipients. (#7)
+- **Binary file upload that works over SSH.** A new `[B]ase64` upload mode takes
+  pasted `base64 <file>` output and decodes it server-side, so binaries upload on
+  any modern SSH client without sz/rz (X/Z-modem stay available). (#8)
 
 ## [2.0.7] - 2026-06-25
 
