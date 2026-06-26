@@ -9,7 +9,7 @@ here so neither side drifts.
 
 <!-- Add open items here, each with a matching GitHub issue. -->
 
-- [ ] **Switchable colorblind-friendly palette (Claude Code's), light + dark** ([#9](https://github.com/CryptoJones/AdmiralBBS/issues/9)) — accessibility; matches C³ #38. Route `screen` colors through a swappable theme, persist per user.
+- [x] **Switchable colorblind-friendly palette (Claude Code's), light + dark** ([#9](https://github.com/CryptoJones/AdmiralBBS/issues/9)) — accessibility; matches C³ #38. Route `screen` colors through a swappable theme, persist per user. — _shipped v2.2.0_
 
 - [x] **File menu: SysOp creates a new File Area (topic)** ([#6](https://github.com/CryptoJones/AdmiralBBS/issues/6)) — SysOp-gated `[N]ew area` on the File menu, mirroring the message-board `[N]ew board` from #2. — _shipped v2.1.0: SysOp [N]ew File Area_
 - [x] **Mail: user-search in `To:` (on `*`) + a new `CC:` field** ([#7](https://github.com/CryptoJones/AdmiralBBS/issues/7)) — typing `*` opens the member-directory search in `To:`; add a `CC:` field with the same lookup. — _shipped v2.1.0: To/CC * search + CC field_
