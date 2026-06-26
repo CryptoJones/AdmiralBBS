@@ -9,7 +9,7 @@ here so neither side drifts.
 
 <!-- Add open items here, each with a matching GitHub issue. -->
 
-_Nothing open — every tracked issue has shipped._
+- [ ] **File menu: SysOp creates a new File Area (topic)** ([#6](https://github.com/CryptoJones/AdmiralBBS/issues/6)) — SysOp-gated `[N]ew area` on the File menu, mirroring the message-board `[N]ew board` from #2.
 
 ## Done
 
