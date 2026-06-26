@@ -11,6 +11,7 @@ here so neither side drifts.
 
 - [ ] **File menu: SysOp creates a new File Area (topic)** ([#6](https://github.com/CryptoJones/AdmiralBBS/issues/6)) — SysOp-gated `[N]ew area` on the File menu, mirroring the message-board `[N]ew board` from #2.
 - [ ] **Mail: user-search in `To:` (on `*`) + a new `CC:` field** ([#7](https://github.com/CryptoJones/AdmiralBBS/issues/7)) — typing `*` opens the member-directory search in `To:`; add a `CC:` field with the same lookup.
+- [ ] **Modern file upload** ([#8](https://github.com/CryptoJones/AdmiralBBS/issues/8)) — X/Z-modem doesn't work over SSH; add base64 paste for binaries and/or an HTTP(S) upload endpoint.
 
 ## Done
 
