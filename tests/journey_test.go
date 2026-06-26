@@ -92,7 +92,7 @@ func TestFullMemberJourney(t *testing.T) {
 
 	// 5) Send private mail to the seeded SysOp recipient.
 	sysop, _ := s.Users().Create("sysop", "x", "", "")
-	run("alice", false, "c\nsysop\nHi Sysop\nplease review\n.\nq\n", func(sess *session.Session) {
+	run("alice", false, "c\nsysop\n\nHi Sysop\nplease review\n.\nq\n", func(sess *session.Session) {
 		if err := menu.RunMail(sess, s, alice); err != nil {
 			t.Fatalf("mail: %v", err)
 		}
