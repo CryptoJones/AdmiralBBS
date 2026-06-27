@@ -100,7 +100,7 @@ possible at all. We didn't invent any of this — we just get to use it:
 - **[Filippo Valsorda](https://github.com/FiloSottile)** — for years of stewardship of Go's cryptography,
   including the `golang.org/x/crypto` packages (XChaCha20-Poly1305, Argon2) we
   lean on, plus making serious crypto approachable for the rest of us.
-- The **Go team** and **`golang.org/x/crypto`** maintainers for trustworthy,
+- The ENTIRE **Go team** and **`golang.org/x/crypto`** maintainers for trustworthy,
   audited implementations of all of the above.
 
 To everyone maintaining the unglamorous crypto primitives the whole internet
