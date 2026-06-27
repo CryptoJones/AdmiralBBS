@@ -88,15 +88,18 @@ In the spirit of [xkcd 2347](https://xkcd.com/2347/), AdmiralBBS stands on the
 shoulders of the cryptographers whose work makes "secure from sprint zero"
 possible at all. We didn't invent any of this — we just get to use it:
 
-- **Mihir Bellare, Ran Canetti & Hugo Krawczyk** — HMAC (1996), which makes our
+- **[Mihir Bellare](https://orcid.org/0000-0002-8765-5573), [Ran Canetti](https://orcid.org/0000-0002-5479-7540) & [Hugo Krawczyk](https://scholar.google.com/citations?user=-coqiSIAAAAJ)** — HMAC (1996), which makes our
   audit trail tamper-evident.
-- **Ralph Merkle** — hash chains / hash trees, the idea of committing each
+- **[Ralph Merkle](http://www.ralphmerkle.com/)** — hash chains / hash trees, the idea of committing each
   record to the one before it.
-- **Daniel J. Bernstein** — ChaCha20 and Poly1305, the backbone of the
+- **[Daniel J. Bernstein](https://cr.yp.to/djb.html)** — ChaCha20 and Poly1305, the backbone of the
   XChaCha20-Poly1305 encryption protecting data at rest.
-- **Alex Biryukov, Daniel Dinu & Dmitry Khovratovich** — Argon2 (Password
+- **[Alex Biryukov](https://www.uni.lu/fstm-en/people/alexei-biryukov/), [Daniel Dinu](https://github.com/P-H-C/phc-winner-argon2) & [Dmitry Khovratovich](https://github.com/khovratovich)** — Argon2 (Password
   Hashing Competition winner), used both to hash member passwords and to derive
   the master key.
+- **[Filippo Valsorda](https://github.com/FiloSottile)** — for years of stewardship of Go's cryptography,
+  including the `golang.org/x/crypto` packages (XChaCha20-Poly1305, Argon2) we
+  lean on, plus making serious crypto approachable for the rest of us.
 - The **Go team** and **`golang.org/x/crypto`** maintainers for trustworthy,
   audited implementations of all of the above.
 
